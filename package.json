@@ -1,0 +1,8 @@
+{
+  "name": "natures-registry",
+  "version": "1.0.0",
+  "description": "Nature's Registry Carbon Credit Platform",
+  "scripts": {
+    "new-plugin": "node scripts/new-plugin.js"
+  }
+}
