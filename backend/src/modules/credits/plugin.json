@@ -1,0 +1,36 @@
+{
+  "name": "credits",
+  "version": "1.0.0",
+  "enabled": true,
+  "module": "./credits.module",
+  "plugin": "./credits.plugin",
+  "allowedRoles": ["SUPERADMIN", "CERTIFIER", "PROJECT_DEVELOPER", "BUYER"],
+  "routes": [
+    { "path": "/credits", "method": "GET", "roles": ["SUPERADMIN", "CERTIFIER", "PROJECT_DEVELOPER", "BUYER"] },
+    { "path": "/credits/:id", "method": "GET", "roles": ["SUPERADMIN", "CERTIFIER", "PROJECT_DEVELOPER", "BUYER"] },
+    { "path": "/credits", "method": "POST", "roles": ["CERTIFIER", "SUPERADMIN"] },
+    { "path": "/credits/:id/retire", "method": "PATCH", "roles": ["CERTIFIER", "SUPERADMIN"] },
+    { "path": "/credits/:id", "method": "DELETE", "roles": ["SUPERADMIN"] }
+  ],
+  "nav": [
+    { "label": "Credits", "path": "/credits", "icon": "BadgeCheck", "roles": ["SUPERADMIN", "CERTIFIER", "PROJECT_DEVELOPER", "BUYER"] }
+  ],
+  "pages": [
+    { "path": "/credits", "component": "CreditListPage", "roles": ["SUPERADMIN", "CERTIFIER", "PROJECT_DEVELOPER", "BUYER"], "title": "Carbon Credits" },
+    { "path": "/credits/new", "component": "CreditIssuePage", "roles": ["CERTIFIER", "SUPERADMIN"], "title": "Issue Credit" },
+    { "path": "/credits/:id", "component": "CreditDetailPage", "roles": ["SUPERADMIN", "CERTIFIER", "PROJECT_DEVELOPER", "BUYER"], "title": "Credit Detail" }
+  ],
+  "sections": {
+    "CreditDetailPage": [
+      { "id": "credit-info", "label": "Credit Information", "roles": ["SUPERADMIN", "CERTIFIER", "PROJECT_DEVELOPER", "BUYER"] },
+      { "id": "issue-action", "label": "Issue Actions", "roles": ["CERTIFIER", "SUPERADMIN"] },
+      { "id": "retire-action", "label": "Retire Credit", "roles": ["CERTIFIER", "SUPERADMIN"] },
+      { "id": "serial-numbers", "label": "Serial Numbers", "roles": ["SUPERADMIN"] }
+    ]
+  },
+  "dashboardWidgets": [
+    { "component": "CreditStatsWidget", "roles": ["SUPERADMIN", "CERTIFIER"], "order": 2 }
+  ],
+  "listensTo": ["project.approved"],
+  "emits": ["credit.issued", "credit.retired"]
+}

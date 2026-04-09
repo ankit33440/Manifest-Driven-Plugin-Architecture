@@ -1,0 +1,39 @@
+{
+  "name": "project",
+  "version": "1.0.0",
+  "enabled": true,
+  "module": "./project.module",
+  "plugin": "./project.plugin",
+  "allowedRoles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER"],
+  "routes": [
+    { "path": "/projects", "method": "GET", "roles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER"] },
+    { "path": "/projects/:id", "method": "GET", "roles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER"] },
+    { "path": "/projects", "method": "POST", "roles": ["PROJECT_DEVELOPER"] },
+    { "path": "/projects/:id/submit", "method": "PATCH", "roles": ["PROJECT_DEVELOPER"] },
+    { "path": "/projects/:id/approve", "method": "PATCH", "roles": ["SUPERADMIN"] },
+    { "path": "/projects/:id/reject", "method": "PATCH", "roles": ["SUPERADMIN"] },
+    { "path": "/projects/:id", "method": "DELETE", "roles": ["SUPERADMIN"] }
+  ],
+  "nav": [
+    { "label": "My Projects", "path": "/projects", "icon": "FolderOpen", "roles": ["PROJECT_DEVELOPER"] },
+    { "label": "All Projects", "path": "/projects", "icon": "Layers", "roles": ["SUPERADMIN", "VERIFIER"] }
+  ],
+  "pages": [
+    { "path": "/projects", "component": "ProjectListPage", "roles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER"], "title": "Projects" },
+    { "path": "/projects/new", "component": "ProjectCreatePage", "roles": ["PROJECT_DEVELOPER"], "title": "New Project" },
+    { "path": "/projects/:id", "component": "ProjectDetailPage", "roles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER"], "title": "Project Detail" }
+  ],
+  "sections": {
+    "ProjectDetailPage": [
+      { "id": "project-info", "label": "Project Information", "roles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER"] },
+      { "id": "submit-action", "label": "Submit for Review", "roles": ["PROJECT_DEVELOPER"] },
+      { "id": "approval-action", "label": "Approval Decision", "roles": ["SUPERADMIN"] },
+      { "id": "project-timeline", "label": "Timeline", "roles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER"] }
+    ]
+  },
+  "dashboardWidgets": [
+    { "component": "ProjectStatsWidget", "roles": ["SUPERADMIN", "PROJECT_DEVELOPER"], "order": 1 }
+  ],
+  "listensTo": [],
+  "emits": ["project.submitted", "project.approved", "project.rejected"]
+}

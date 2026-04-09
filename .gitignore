@@ -1,0 +1,79 @@
+# =========================
+# Node.js (Frontend + Backend)
+# =========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# =========================
+# Environment Variables
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Build / Output
+# =========================
+dist/
+build/
+.next/
+out/
+coverage/
+
+# =========================
+# React (Frontend)
+# =========================
+frontend/node_modules/
+frontend/build/
+frontend/.env
+
+# =========================
+# NestJS (Backend)
+# =========================
+backend/node_modules/
+backend/dist/
+backend/.env
+
+# =========================
+# Logs
+# =========================
+logs/
+*.log
+
+# =========================
+# OS Files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# IDE / Editor
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+# PostgreSQL
+# =========================
+*.sql
+*.sqlite
+*.db
+
+# =========================
+# Docker (if using)
+# =========================
+docker-compose.override.yml
+
+# =========================
+# Misc
+# =========================
+*.tgz
+*.zip

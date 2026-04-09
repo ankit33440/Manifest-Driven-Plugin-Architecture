@@ -1,0 +1,26 @@
+{
+  "name": "marketplace",
+  "version": "1.0.0",
+  "enabled": true,
+  "module": "./marketplace.module",
+  "plugin": "./marketplace.plugin",
+  "allowedRoles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER", "BUYER"],
+  "routes": [],
+  "nav": [
+    { "label": "Marketplace", "path": "/marketplace", "icon": "ShoppingCart", "roles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER", "BUYER"] }
+  ],
+  "pages": [
+    { "path": "/marketplace", "component": "MarketplaceListPage", "roles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER", "BUYER"], "title": "Marketplace" },
+    { "path": "/marketplace/:id", "component": "MarketplaceDetailPage", "roles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER", "BUYER"], "title": "Listing Detail" }
+  ],
+  "sections": {
+    "MarketDetailPage": [
+      { "id": "buy-action", "label": "Buy Action", "roles": ["BUYER"] }
+    ]
+  },
+  "dashboardWidgets": [
+    { "component": "MarketplaceStatsWidget", "roles": ["SUPERADMIN", "BUYER", "PROJECT_DEVELOPER"], "order": 3 }
+  ],
+  "listensTo": ["credit.issued"],
+  "emits": ["trade.completed"]
+}

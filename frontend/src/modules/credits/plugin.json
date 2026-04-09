@@ -1,0 +1,22 @@
+{
+  "name": "credits",
+  "version": "1.0.0",
+  "enabled": true,
+  "module": "./credits.module",
+  "plugin": "./credits.plugin",
+  "allowedRoles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER", "BUYER"],
+  "routes": [],
+  "nav": [
+    { "label": "Credits", "path": "/credits", "icon": "Leaf", "roles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER", "BUYER"] }
+  ],
+  "pages": [
+    { "path": "/credits", "component": "CreditListPage", "roles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER", "BUYER"], "title": "Carbon Credits" },
+    { "path": "/credits/:id", "component": "CreditDetailPage", "roles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER", "BUYER"], "title": "Credit Detail" }
+  ],
+  "sections": {},
+  "dashboardWidgets": [
+    { "component": "CreditStatsWidget", "roles": ["SUPERADMIN", "BUYER", "PROJECT_DEVELOPER"], "order": 2 }
+  ],
+  "listensTo": ["project.approved"],
+  "emits": ["credit.issued", "credit.retired"]
+}

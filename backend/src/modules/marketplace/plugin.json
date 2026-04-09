@@ -1,0 +1,36 @@
+{
+  "name": "marketplace",
+  "version": "1.0.0",
+  "enabled": true,
+  "module": "./marketplace.module",
+  "plugin": "./marketplace.plugin",
+  "allowedRoles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER", "CERTIFIER", "BUYER"],
+  "routes": [
+    { "path": "/marketplace/listings", "method": "GET", "roles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER", "CERTIFIER", "BUYER"] },
+    { "path": "/marketplace/listings/:id", "method": "GET", "roles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER", "CERTIFIER", "BUYER"] },
+    { "path": "/marketplace/listings", "method": "POST", "roles": ["CERTIFIER", "SUPERADMIN"] },
+    { "path": "/marketplace/listings/:id/buy", "method": "POST", "roles": ["BUYER"] },
+    { "path": "/marketplace/listings/:id", "method": "DELETE", "roles": ["SUPERADMIN"] }
+  ],
+  "nav": [
+    { "label": "Marketplace", "path": "/marketplace", "icon": "ShoppingCart", "roles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER", "CERTIFIER", "BUYER"] }
+  ],
+  "pages": [
+    { "path": "/marketplace", "component": "MarketListPage", "roles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER", "CERTIFIER", "BUYER"], "title": "Marketplace" },
+    { "path": "/marketplace/:id", "component": "MarketDetailPage", "roles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER", "CERTIFIER", "BUYER"], "title": "Listing Detail" },
+    { "path": "/marketplace/new", "component": "MarketCreatePage", "roles": ["CERTIFIER", "SUPERADMIN"], "title": "Create Listing" }
+  ],
+  "sections": {
+    "MarketDetailPage": [
+      { "id": "listing-info", "label": "Listing Details", "roles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER", "CERTIFIER", "BUYER"] },
+      { "id": "buy-action", "label": "Purchase", "roles": ["BUYER"] },
+      { "id": "manage-action", "label": "Manage Listing", "roles": ["CERTIFIER", "SUPERADMIN"] },
+      { "id": "trade-history", "label": "Trade History", "roles": ["SUPERADMIN"] }
+    ]
+  },
+  "dashboardWidgets": [
+    { "component": "MarketStatsWidget", "roles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER", "CERTIFIER", "BUYER"], "order": 3 }
+  ],
+  "listensTo": ["credit.issued"],
+  "emits": ["trade.completed"]
+}
