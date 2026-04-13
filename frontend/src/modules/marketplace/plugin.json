@@ -4,23 +4,67 @@
   "enabled": true,
   "module": "./marketplace.module",
   "plugin": "./marketplace.plugin",
-  "allowedRoles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER", "BUYER"],
-  "routes": [],
-  "nav": [
-    { "label": "Marketplace", "path": "/marketplace", "icon": "ShoppingCart", "roles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER", "BUYER"] }
-  ],
-  "pages": [
-    { "path": "/marketplace", "component": "MarketplaceListPage", "roles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER", "BUYER"], "title": "Marketplace" },
-    { "path": "/marketplace/:id", "component": "MarketplaceDetailPage", "roles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER", "BUYER"], "title": "Listing Detail" }
-  ],
-  "sections": {
-    "MarketDetailPage": [
-      { "id": "buy-action", "label": "Buy Action", "roles": ["BUYER"] }
-    ]
+  "publicRoutes": [],
+  "roles": {
+    "SUPERADMIN": {
+      "routes": [],
+      "nav": [
+        { "label": "Marketplace", "path": "/marketplace", "icon": "ShoppingCart" }
+      ],
+      "pages": [
+        { "path": "/marketplace", "component": "MarketplaceListPage", "title": "Marketplace" },
+        { "path": "/marketplace/:id", "component": "MarketplaceDetailPage", "title": "Listing Detail" }
+      ],
+      "sections": {},
+      "dashboardWidgets": [
+        { "component": "MarketplaceStatsWidget", "order": 3 }
+      ]
+    },
+    "PROJECT_DEVELOPER": {
+      "routes": [],
+      "nav": [
+        { "label": "Marketplace", "path": "/marketplace", "icon": "ShoppingCart" }
+      ],
+      "pages": [
+        { "path": "/marketplace", "component": "MarketplaceListPage", "title": "Marketplace" },
+        { "path": "/marketplace/:id", "component": "MarketplaceDetailPage", "title": "Listing Detail" }
+      ],
+      "sections": {},
+      "dashboardWidgets": [
+        { "component": "MarketplaceStatsWidget", "order": 3 }
+      ]
+    },
+    "VERIFIER": {
+      "routes": [],
+      "nav": [
+        { "label": "Marketplace", "path": "/marketplace", "icon": "ShoppingCart" }
+      ],
+      "pages": [
+        { "path": "/marketplace", "component": "MarketplaceListPage", "title": "Marketplace" },
+        { "path": "/marketplace/:id", "component": "MarketplaceDetailPage", "title": "Listing Detail" }
+      ],
+      "sections": {},
+      "dashboardWidgets": []
+    },
+    "BUYER": {
+      "routes": [],
+      "nav": [
+        { "label": "Marketplace", "path": "/marketplace", "icon": "ShoppingCart" }
+      ],
+      "pages": [
+        { "path": "/marketplace", "component": "MarketplaceListPage", "title": "Marketplace" },
+        { "path": "/marketplace/:id", "component": "MarketplaceDetailPage", "title": "Listing Detail" }
+      ],
+      "sections": {
+        "MarketDetailPage": [
+          { "id": "buy-action", "label": "Buy Action" }
+        ]
+      },
+      "dashboardWidgets": [
+        { "component": "MarketplaceStatsWidget", "order": 3 }
+      ]
+    }
   },
-  "dashboardWidgets": [
-    { "component": "MarketplaceStatsWidget", "roles": ["SUPERADMIN", "BUYER", "PROJECT_DEVELOPER"], "order": 3 }
-  ],
   "listensTo": ["credit.issued"],
   "emits": ["trade.completed"]
 }

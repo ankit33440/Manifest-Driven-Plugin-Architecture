@@ -18,33 +18,36 @@ const CarbonRoleSchema = z.enum([
 const RouteManifestSchema = z.object({
   path: z.string().startsWith('/'),
   method: z.enum(['GET', 'POST', 'PATCH', 'PUT', 'DELETE']),
-  roles: z.array(CarbonRoleSchema),
 });
 
 const NavManifestSchema = z.object({
   label: z.string().min(1),
   path: z.string().startsWith('/'),
   icon: z.string().min(1),
-  roles: z.array(CarbonRoleSchema),
 });
 
 const PageManifestSchema = z.object({
   path: z.string().startsWith('/'),
   component: z.string().min(1),
-  roles: z.array(CarbonRoleSchema),
   title: z.string().min(1),
 });
 
 const SectionManifestSchema = z.object({
   id: z.string().min(1),
   label: z.string().min(1),
-  roles: z.array(CarbonRoleSchema),
 });
 
 const WidgetManifestSchema = z.object({
   component: z.string().min(1),
-  roles: z.array(CarbonRoleSchema),
   order: z.number().int().nonnegative(),
+});
+
+const RoleFeaturesSchema = z.object({
+  routes: z.array(RouteManifestSchema).default([]),
+  nav: z.array(NavManifestSchema).default([]),
+  pages: z.array(PageManifestSchema).default([]),
+  sections: z.record(z.string(), z.array(SectionManifestSchema)).default({}),
+  dashboardWidgets: z.array(WidgetManifestSchema).default([]),
 });
 
 const PluginManifestSchema = z.object({
@@ -53,14 +56,10 @@ const PluginManifestSchema = z.object({
   enabled: z.boolean(),
   module: z.string().startsWith('./'),
   plugin: z.string().startsWith('./').optional(),
-  allowedRoles: z.array(CarbonRoleSchema),
-  routes: z.array(RouteManifestSchema),
-  nav: z.array(NavManifestSchema),
-  pages: z.array(PageManifestSchema),
-  sections: z.record(z.string(), z.array(SectionManifestSchema)),
-  dashboardWidgets: z.array(WidgetManifestSchema),
-  listensTo: z.array(z.string()),
-  emits: z.array(z.string()),
+  roles: z.record(z.string(), RoleFeaturesSchema).default({}),
+  publicRoutes: z.array(RouteManifestSchema).default([]),
+  listensTo: z.array(z.string()).default([]),
+  emits: z.array(z.string()).default([]),
 });
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

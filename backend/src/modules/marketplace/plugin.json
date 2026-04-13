@@ -4,33 +4,124 @@
   "enabled": true,
   "module": "./marketplace.module",
   "plugin": "./marketplace.plugin",
-  "allowedRoles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER", "CERTIFIER", "BUYER"],
-  "routes": [
-    { "path": "/marketplace/listings", "method": "GET", "roles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER", "CERTIFIER", "BUYER"] },
-    { "path": "/marketplace/listings/:id", "method": "GET", "roles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER", "CERTIFIER", "BUYER"] },
-    { "path": "/marketplace/listings", "method": "POST", "roles": ["CERTIFIER", "SUPERADMIN"] },
-    { "path": "/marketplace/listings/:id/buy", "method": "POST", "roles": ["BUYER"] },
-    { "path": "/marketplace/listings/:id", "method": "DELETE", "roles": ["SUPERADMIN"] }
-  ],
-  "nav": [
-    { "label": "Marketplace", "path": "/marketplace", "icon": "ShoppingCart", "roles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER", "CERTIFIER", "BUYER"] }
-  ],
-  "pages": [
-    { "path": "/marketplace", "component": "MarketListPage", "roles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER", "CERTIFIER", "BUYER"], "title": "Marketplace" },
-    { "path": "/marketplace/:id", "component": "MarketDetailPage", "roles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER", "CERTIFIER", "BUYER"], "title": "Listing Detail" },
-    { "path": "/marketplace/new", "component": "MarketCreatePage", "roles": ["CERTIFIER", "SUPERADMIN"], "title": "Create Listing" }
-  ],
-  "sections": {
-    "MarketDetailPage": [
-      { "id": "listing-info", "label": "Listing Details", "roles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER", "CERTIFIER", "BUYER"] },
-      { "id": "buy-action", "label": "Purchase", "roles": ["BUYER"] },
-      { "id": "manage-action", "label": "Manage Listing", "roles": ["CERTIFIER", "SUPERADMIN"] },
-      { "id": "trade-history", "label": "Trade History", "roles": ["SUPERADMIN"] }
-    ]
+  "publicRoutes": [],
+  "roles": {
+    "SUPERADMIN": {
+      "routes": [
+        { "path": "/marketplace/listings", "method": "GET" },
+        { "path": "/marketplace/listings/:id", "method": "GET" },
+        { "path": "/marketplace/listings", "method": "POST" },
+        { "path": "/marketplace/listings/:id", "method": "DELETE" }
+      ],
+      "nav": [
+        { "label": "Marketplace", "path": "/marketplace", "icon": "ShoppingCart" }
+      ],
+      "pages": [
+        { "path": "/marketplace", "component": "MarketListPage", "title": "Marketplace" },
+        { "path": "/marketplace/:id", "component": "MarketDetailPage", "title": "Listing Detail" },
+        { "path": "/marketplace/new", "component": "MarketCreatePage", "title": "Create Listing" }
+      ],
+      "sections": {
+        "MarketDetailPage": [
+          { "id": "listing-info", "label": "Listing Details" },
+          { "id": "manage-action", "label": "Manage Listing" },
+          { "id": "trade-history", "label": "Trade History" }
+        ]
+      },
+      "dashboardWidgets": [
+        { "component": "MarketStatsWidget", "order": 3 }
+      ]
+    },
+    "CERTIFIER": {
+      "routes": [
+        { "path": "/marketplace/listings", "method": "GET" },
+        { "path": "/marketplace/listings/:id", "method": "GET" },
+        { "path": "/marketplace/listings", "method": "POST" }
+      ],
+      "nav": [
+        { "label": "Marketplace", "path": "/marketplace", "icon": "ShoppingCart" }
+      ],
+      "pages": [
+        { "path": "/marketplace", "component": "MarketListPage", "title": "Marketplace" },
+        { "path": "/marketplace/:id", "component": "MarketDetailPage", "title": "Listing Detail" },
+        { "path": "/marketplace/new", "component": "MarketCreatePage", "title": "Create Listing" }
+      ],
+      "sections": {
+        "MarketDetailPage": [
+          { "id": "listing-info", "label": "Listing Details" },
+          { "id": "manage-action", "label": "Manage Listing" }
+        ]
+      },
+      "dashboardWidgets": [
+        { "component": "MarketStatsWidget", "order": 3 }
+      ]
+    },
+    "PROJECT_DEVELOPER": {
+      "routes": [
+        { "path": "/marketplace/listings", "method": "GET" },
+        { "path": "/marketplace/listings/:id", "method": "GET" }
+      ],
+      "nav": [
+        { "label": "Marketplace", "path": "/marketplace", "icon": "ShoppingCart" }
+      ],
+      "pages": [
+        { "path": "/marketplace", "component": "MarketListPage", "title": "Marketplace" },
+        { "path": "/marketplace/:id", "component": "MarketDetailPage", "title": "Listing Detail" }
+      ],
+      "sections": {
+        "MarketDetailPage": [
+          { "id": "listing-info", "label": "Listing Details" }
+        ]
+      },
+      "dashboardWidgets": [
+        { "component": "MarketStatsWidget", "order": 3 }
+      ]
+    },
+    "VERIFIER": {
+      "routes": [
+        { "path": "/marketplace/listings", "method": "GET" },
+        { "path": "/marketplace/listings/:id", "method": "GET" }
+      ],
+      "nav": [
+        { "label": "Marketplace", "path": "/marketplace", "icon": "ShoppingCart" }
+      ],
+      "pages": [
+        { "path": "/marketplace", "component": "MarketListPage", "title": "Marketplace" },
+        { "path": "/marketplace/:id", "component": "MarketDetailPage", "title": "Listing Detail" }
+      ],
+      "sections": {
+        "MarketDetailPage": [
+          { "id": "listing-info", "label": "Listing Details" }
+        ]
+      },
+      "dashboardWidgets": [
+        { "component": "MarketStatsWidget", "order": 3 }
+      ]
+    },
+    "BUYER": {
+      "routes": [
+        { "path": "/marketplace/listings", "method": "GET" },
+        { "path": "/marketplace/listings/:id", "method": "GET" },
+        { "path": "/marketplace/listings/:id/buy", "method": "POST" }
+      ],
+      "nav": [
+        { "label": "Marketplace", "path": "/marketplace", "icon": "ShoppingCart" }
+      ],
+      "pages": [
+        { "path": "/marketplace", "component": "MarketListPage", "title": "Marketplace" },
+        { "path": "/marketplace/:id", "component": "MarketDetailPage", "title": "Listing Detail" }
+      ],
+      "sections": {
+        "MarketDetailPage": [
+          { "id": "listing-info", "label": "Listing Details" },
+          { "id": "buy-action", "label": "Purchase" }
+        ]
+      },
+      "dashboardWidgets": [
+        { "component": "MarketStatsWidget", "order": 3 }
+      ]
+    }
   },
-  "dashboardWidgets": [
-    { "component": "MarketStatsWidget", "roles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER", "CERTIFIER", "BUYER"], "order": 3 }
-  ],
   "listensTo": ["credit.issued"],
   "emits": ["trade.completed"]
 }

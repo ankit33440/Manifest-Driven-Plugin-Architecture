@@ -1,46 +1,38 @@
 {
-    "name": "reporting",
-    "version": "1.0.0",
-    "enabled": true,
-    "module": "./reporting.module",
-    "plugin": "./reporting.plugin",
-    "allowedRoles": [
-        "SUPERADMIN"
-    ],
-    "routes": [
-        {
-            "path": "/reports/monthly",
-            "method": "GET",
-            "roles": [
-                "SUPERADMIN",
-                "VERIFIER"
-            ]
-        }
-    ],
-    "nav": [
-        {
-            "label": "System Reports",
-            "path": "/reports",
-            "icon": "BarChart3",
-            "roles": [
-                "SUPERADMIN",
-                "VERIFIER"
-            ]
-        }
-    ],
-    "pages": [
-        {
-            "path": "/reports",
-            "component": "ReportDashboardPage",
-            "roles": [
-                "SUPERADMIN",
-                "VERIFIER"
-            ],
-            "title": "Reports"
-        }
-    ],
-    "sections": {},
-    "dashboardWidgets": [],
-    "listensTo": [],
-    "emits": []
+  "name": "reporting",
+  "version": "1.0.0",
+  "enabled": true,
+  "module": "./reporting.module",
+  "plugin": "./reporting.plugin",
+  "publicRoutes": [],
+  "roles": {
+    "SUPERADMIN": {
+      "routes": [
+        { "path": "/reports/monthly", "method": "GET" }
+      ],
+      "nav": [
+        { "label": "System Reports", "path": "/reports", "icon": "BarChart3" }
+      ],
+      "pages": [
+        { "path": "/reports", "component": "ReportDashboardPage", "title": "Reports" }
+      ],
+      "sections": {},
+      "dashboardWidgets": []
+    },
+    "VERIFIER": {
+      "routes": [
+        { "path": "/reports/monthly", "method": "GET" }
+      ],
+      "nav": [
+        { "label": "System Reports", "path": "/reports", "icon": "BarChart3" }
+      ],
+      "pages": [
+        { "path": "/reports", "component": "ReportDashboardPage", "title": "Reports" }
+      ],
+      "sections": {},
+      "dashboardWidgets": []
+    }
+  },
+  "listensTo": [],
+  "emits": []
 }

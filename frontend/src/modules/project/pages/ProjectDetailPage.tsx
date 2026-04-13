@@ -61,6 +61,7 @@ export default function ProjectDetailPage() {
       <div className="space-y-4">
         {sections.map((section) => {
           const SectionComponent = SECTION_COMPONENTS[section.id];
+          console.log("Section Component", SectionComponent);
           if (!SectionComponent) return null;
           return (
             <SectionComponent

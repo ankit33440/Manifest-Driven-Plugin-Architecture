@@ -4,19 +4,63 @@
   "enabled": true,
   "module": "./credits.module",
   "plugin": "./credits.plugin",
-  "allowedRoles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER", "BUYER"],
-  "routes": [],
-  "nav": [
-    { "label": "Credits", "path": "/credits", "icon": "Leaf", "roles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER", "BUYER"] }
-  ],
-  "pages": [
-    { "path": "/credits", "component": "CreditListPage", "roles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER", "BUYER"], "title": "Carbon Credits" },
-    { "path": "/credits/:id", "component": "CreditDetailPage", "roles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER", "BUYER"], "title": "Credit Detail" }
-  ],
-  "sections": {},
-  "dashboardWidgets": [
-    { "component": "CreditStatsWidget", "roles": ["SUPERADMIN", "BUYER", "PROJECT_DEVELOPER"], "order": 2 }
-  ],
+  "publicRoutes": [],
+  "roles": {
+    "SUPERADMIN": {
+      "routes": [],
+      "nav": [
+        { "label": "Credits", "path": "/credits", "icon": "Leaf" }
+      ],
+      "pages": [
+        { "path": "/credits", "component": "CreditListPage", "title": "Carbon Credits" },
+        { "path": "/credits/:id", "component": "CreditDetailPage", "title": "Credit Detail" }
+      ],
+      "sections": {},
+      "dashboardWidgets": [
+        { "component": "CreditStatsWidget", "order": 2 }
+      ]
+    },
+    "PROJECT_DEVELOPER": {
+      "routes": [],
+      "nav": [
+        { "label": "Credits", "path": "/credits", "icon": "Leaf" }
+      ],
+      "pages": [
+        { "path": "/credits", "component": "CreditListPage", "title": "Carbon Credits" },
+        { "path": "/credits/:id", "component": "CreditDetailPage", "title": "Credit Detail" }
+      ],
+      "sections": {},
+      "dashboardWidgets": [
+        { "component": "CreditStatsWidget", "order": 2 }
+      ]
+    },
+    "VERIFIER": {
+      "routes": [],
+      "nav": [
+        { "label": "Credits", "path": "/credits", "icon": "Leaf" }
+      ],
+      "pages": [
+        { "path": "/credits", "component": "CreditListPage", "title": "Carbon Credits" },
+        { "path": "/credits/:id", "component": "CreditDetailPage", "title": "Credit Detail" }
+      ],
+      "sections": {},
+      "dashboardWidgets": []
+    },
+    "BUYER": {
+      "routes": [],
+      "nav": [
+        { "label": "Credits", "path": "/credits", "icon": "Leaf" }
+      ],
+      "pages": [
+        { "path": "/credits", "component": "CreditListPage", "title": "Carbon Credits" },
+        { "path": "/credits/:id", "component": "CreditDetailPage", "title": "Credit Detail" }
+      ],
+      "sections": {},
+      "dashboardWidgets": [
+        { "component": "CreditStatsWidget", "order": 2 }
+      ]
+    }
+  },
   "listensTo": ["project.approved"],
   "emits": ["credit.issued", "credit.retired"]
 }

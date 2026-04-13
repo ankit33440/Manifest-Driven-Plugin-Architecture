@@ -4,15 +4,31 @@
   "enabled": true,
   "module": "./auth.module",
   "plugin": "./auth.plugin",
-  "allowedRoles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER", "CERTIFIER", "BUYER"],
-  "routes": [
-    { "path": "/auth/login", "method": "POST", "roles": [] },
-    { "path": "/auth/me", "method": "GET", "roles": ["SUPERADMIN", "PROJECT_DEVELOPER", "VERIFIER", "CERTIFIER", "BUYER"] }
+  "publicRoutes": [
+    { "path": "/auth/login", "method": "POST" }
   ],
-  "nav": [],
-  "pages": [],
-  "sections": {},
-  "dashboardWidgets": [],
+  "roles": {
+    "SUPERADMIN": {
+      "routes": [{ "path": "/auth/me", "method": "GET" }],
+      "nav": [], "pages": [], "sections": {}, "dashboardWidgets": []
+    },
+    "PROJECT_DEVELOPER": {
+      "routes": [{ "path": "/auth/me", "method": "GET" }],
+      "nav": [], "pages": [], "sections": {}, "dashboardWidgets": []
+    },
+    "VERIFIER": {
+      "routes": [{ "path": "/auth/me", "method": "GET" }],
+      "nav": [], "pages": [], "sections": {}, "dashboardWidgets": []
+    },
+    "CERTIFIER": {
+      "routes": [{ "path": "/auth/me", "method": "GET" }],
+      "nav": [], "pages": [], "sections": {}, "dashboardWidgets": []
+    },
+    "BUYER": {
+      "routes": [{ "path": "/auth/me", "method": "GET" }],
+      "nav": [], "pages": [], "sections": {}, "dashboardWidgets": []
+    }
+  },
   "listensTo": [],
   "emits": []
 }

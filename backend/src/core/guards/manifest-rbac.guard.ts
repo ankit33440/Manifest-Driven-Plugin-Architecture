@@ -31,29 +31,35 @@ export class ManifestRbacGuard implements CanActivate {
     const requestPath = request.path;
     const requestMethod = request.method.toUpperCase();
 
-    // Find matching route across all manifests
-    let matchedRoles: string[] | null = null;
-
+    // 1. Check public routes first — no auth needed
     for (const manifest of this.manifests) {
-      for (const route of manifest.routes) {
+      for (const route of manifest.publicRoutes || []) {
         if (
           route.method.toUpperCase() === requestMethod &&
           matchesPath(route.path, requestPath)
         ) {
-          matchedRoles = route.roles;
-          break;
+          return true;
         }
       }
-      if (matchedRoles !== null) break;
+    }
+
+    // 2. Check if this route exists under ANY role in ANY manifest
+    const allowedRoles: string[] = [];
+    for (const manifest of this.manifests) {
+      for (const [role, features] of Object.entries(manifest.roles || {})) {
+        for (const route of features.routes || []) {
+          if (
+            route.method.toUpperCase() === requestMethod &&
+            matchesPath(route.path, requestPath)
+          ) {
+            allowedRoles.push(role);
+          }
+        }
+      }
     }
 
     // Route not declared in any manifest — pass through (unprotected)
-    if (matchedRoles === null) {
-      return true;
-    }
-
-    // Public route — no roles required
-    if (matchedRoles.length === 0) {
+    if (allowedRoles.length === 0) {
       return true;
     }
 
@@ -76,7 +82,7 @@ export class ManifestRbacGuard implements CanActivate {
     (request as any).user = payload;
 
     // Check role
-    if (!matchedRoles.includes(payload.role)) {
+    if (!allowedRoles.includes(payload.role)) {
       throw new ForbiddenException(
         `Role '${payload.role}' is not permitted for ${requestMethod} ${requestPath}`,
       );
@@ -85,3 +91,4 @@ export class ManifestRbacGuard implements CanActivate {
     return true;
   }
 }
+

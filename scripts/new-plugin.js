@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Plugin Scaffolder CLI
+ * Plugin Scaffolder CLI (Role-Centric Format)
  * Usage: node scripts/new-plugin.js <module-name> [--roles SUPERADMIN,BUYER]
  *
  * Example:
@@ -37,7 +37,6 @@ if (invalidRoles.length) {
   process.exit(1);
 }
 
-const rolesJson = JSON.stringify(roles, null, 8).replace(/\n/g, '\n    ');
 const ROOT = path.join(__dirname, '..');
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -56,26 +55,47 @@ function write(filePath, content) {
   console.log(`✅  Created: ${path.relative(ROOT, filePath)}`);
 }
 
+// ─── Role-Centric JSON Builder ──────────────────────────────────────────────
+
+function buildRolesBlock(roles, opts = {}) {
+  const block = {};
+  for (const role of roles) {
+    block[role] = {
+      routes: opts.routes || [{ path: `/${moduleName}`, method: 'GET' }],
+      nav: opts.nav || [{ label: pascalName, path: `/${moduleName}`, icon: 'LayoutGrid' }],
+      pages: opts.pages || [{ path: `/${moduleName}`, component: `${pascalName}ListPage`, title: pascalName }],
+      sections: {},
+      dashboardWidgets: [],
+    };
+  }
+  return block;
+}
+
 // ─── Templates ───────────────────────────────────────────────────────────────
 
-const backendPluginJson = `{
-  "name": "${moduleName}",
-  "version": "1.0.0",
-  "enabled": true,
-  "module": "./${moduleName}.module",
-  "plugin": "./${moduleName}.plugin",
-  "allowedRoles": ${rolesJson},
-  "routes": [
-    { "path": "/${moduleName}", "method": "GET", "roles": ${rolesJson} }
-  ],
-  "nav": [],
-  "pages": [],
-  "sections": {},
-  "dashboardWidgets": [],
-  "listensTo": [],
-  "emits": []
-}
-`;
+const backendPluginJson = JSON.stringify({
+  name: moduleName,
+  version: '1.0.0',
+  enabled: true,
+  module: `./${moduleName}.module`,
+  plugin: `./${moduleName}.plugin`,
+  publicRoutes: [],
+  roles: buildRolesBlock(roles),
+  listensTo: [],
+  emits: [],
+}, null, 2) + '\n';
+
+const frontendPluginJson = JSON.stringify({
+  name: moduleName,
+  version: '1.0.0',
+  enabled: true,
+  module: `./${moduleName}.module`,
+  plugin: `./${moduleName}.plugin`,
+  publicRoutes: [],
+  roles: buildRolesBlock(roles, { routes: [] }),
+  listensTo: [],
+  emits: [],
+}, null, 2) + '\n';
 
 const backendModule = `import { Module } from '@nestjs/common';
 import { ${pascalName}Controller } from './${moduleName}.controller';
@@ -115,29 +135,6 @@ export class ${pascalName}Service {
     // TODO: Replace with real data logic
     return { module: '${moduleName}', data: [] };
   }
-}
-`;
-
-const frontendPluginJson = `{
-  "name": "${moduleName}",
-  "version": "1.0.0",
-  "enabled": true,
-  "module": "./${moduleName}.module",
-  "plugin": "./${moduleName}.plugin",
-  "allowedRoles": ${rolesJson},
-  "routes": [
-    { "path": "/${moduleName}", "method": "GET", "roles": ${rolesJson} }
-  ],
-  "nav": [
-    { "label": "${pascalName}", "path": "/${moduleName}", "icon": "LayoutGrid", "roles": ${rolesJson} }
-  ],
-  "pages": [
-    { "path": "/${moduleName}", "component": "${pascalName}ListPage", "roles": ${rolesJson}, "title": "${pascalName}" }
-  ],
-  "sections": {},
-  "dashboardWidgets": [],
-  "listensTo": [],
-  "emits": []
 }
 `;
 
@@ -211,7 +208,7 @@ console.log(`
 Next steps:
   1. Edit backend/src/modules/${moduleName}/${moduleName}.service.ts  → add real data logic
   2. Edit frontend/src/modules/${moduleName}/pages/${pascalName}ListPage.tsx → build your UI
-  3. Update plugin.json nav/pages/routes as needed
+  3. Update plugin.json roles/routes as needed
   4. Restart backend:  cd backend && npm run start:dev
   5. Frontend HMR picks up new plugin.json automatically
 ────────────────────────────────────────────────────
