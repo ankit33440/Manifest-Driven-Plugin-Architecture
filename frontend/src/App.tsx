@@ -1,34 +1,43 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import Layout from './shell/Layout';
-import LoginPage from './modules/auth/pages/LoginPage';
-import { AuthProvider, useAuth } from './core/auth/AuthContext';
-
-function AuthGuardedLayout() {
-  const { user, isLoading } = useAuth();
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-gray-500">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-  if (!user) return <Navigate to="/login" replace />;
-  return <Layout />;
-}
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { AppShell } from './components/layout/AppShell';
+import { ProtectedRoute } from './components/layout/ProtectedRoute';
+import { DashboardPage } from './features/dashboard/pages/DashboardPage';
+import { LoginPage } from './features/auth/pages/LoginPage';
+import { RegisterPage } from './features/auth/pages/RegisterPage';
+import { UsersPage } from './features/users/pages/UsersPage';
+import { RolesPage } from './features/roles/pages/RolesPage';
+import { ProjectsPage } from './features/projects/pages/ProjectsPage';
+import { ProjectWizardPage } from './features/projects/pages/ProjectWizardPage';
+import { ProjectDetailPage } from './features/projects/pages/ProjectDetailPage';
+import { PlaceholderPage } from './features/shared/pages/PlaceholderPage';
 
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/*" element={<AuthGuardedLayout />} />
-        </Routes>
-      </AuthProvider>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <AppShell />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="admin/users" element={<UsersPage />} />
+          <Route path="admin/roles" element={<RolesPage />} />
+          <Route path="projects" element={<ProjectsPage />} />
+          <Route path="projects/new" element={<ProjectWizardPage />} />
+          <Route path="projects/:id" element={<ProjectDetailPage />} />
+          <Route path="verifications" element={<PlaceholderPage title="Verifications" />} />
+          <Route path="certifications" element={<PlaceholderPage title="Certifications" />} />
+          <Route path="marketplace" element={<PlaceholderPage title="Marketplace" />} />
+        </Route>
+      </Routes>
     </BrowserRouter>
   );
 }

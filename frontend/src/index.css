@@ -3,7 +3,45 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  * {
+    @apply border-stone-200;
+  }
+
+  html {
+    font-family: "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  }
+
   body {
-    @apply bg-gray-50 text-gray-900;
+    @apply bg-[#eef2f3] text-stone-900 antialiased;
+  }
+}
+
+@layer components {
+  .surface {
+    @apply rounded-[28px] border border-stone-200 bg-white shadow-[0_22px_55px_rgba(15,23,42,0.08)];
+  }
+
+  .subtle-surface {
+    @apply rounded-[22px] border border-stone-200 bg-[#fbfaf7];
+  }
+
+  .primary-button {
+    @apply inline-flex items-center justify-center rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .secondary-button {
+    @apply inline-flex items-center justify-center rounded-2xl border border-stone-200 bg-white px-5 py-3 text-sm font-semibold text-stone-700 transition hover:bg-stone-50;
+  }
+
+  .field {
+    @apply h-14 w-full rounded-2xl border border-stone-300 bg-white px-4 text-base text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100;
+  }
+
+  .field-label {
+    @apply text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-500;
   }
 }

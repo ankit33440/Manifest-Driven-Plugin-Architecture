@@ -1,0 +1,219 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  PENDING_APPROVAL
+  ACTIVE
+  SUSPENDED
+  REJECTED
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+enum ProjectType {
+  REFORESTATION
+  SOLAR
+  WIND
+  METHANE
+  REDD_PLUS
+  OTHER
+}
+
+enum ProjectStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  VERIFIED
+  CERTIFIED
+  ACTIVE
+}
+
+enum ProjectStandard {
+  VCS
+  GOLD_STANDARD
+  CAR
+  CDM
+  OTHER
+}
+
+model User {
+  id                    String                @id @default(cuid())
+  email                 String                @unique
+  passwordHash          String
+  firstName             String
+  lastName              String
+  status                UserStatus            @default(PENDING_APPROVAL)
+  invitedById           String?
+  invitationToken       String?               @unique
+  invitationTokenExpiry DateTime?
+  statusNote            String?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  invitedBy             User?                 @relation("UserInvitations", fields: [invitedById], references: [id])
+  invitedUsers          User[]                @relation("UserInvitations")
+  userRoles             UserRole[]
+  invitationsCreated    Invitation[]          @relation("InvitationCreatedBy")
+  refreshTokens         RefreshToken[]
+  projectsDeveloped     Project[]             @relation("ProjectDeveloper")
+  projectsVerified      Project[]             @relation("ProjectVerifier")
+  projectsCertified     Project[]             @relation("ProjectCertifier")
+  projectStatusChanges  ProjectStatusHistory[]
+  auditLogs             AuditLog[]
+
+  @@index([status])
+}
+
+model Role {
+  id              String           @id @default(cuid())
+  name            String           @unique
+  description     String?
+  isSystem        Boolean          @default(false)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  rolePermissions RolePermission[]
+  userRoles       UserRole[]
+  invitations     Invitation[]
+}
+
+model Permission {
+  id              String           @id @default(cuid())
+  key             String           @unique
+  description     String?
+  module          String
+  createdAt       DateTime         @default(now())
+  rolePermissions RolePermission[]
+
+  @@index([module])
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  createdAt    DateTime   @default(now())
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model UserRole {
+  userId     String
+  roleId     String
+  assignedAt DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+}
+
+model Invitation {
+  id              String           @id @default(cuid())
+  email           String
+  roleId          String
+  token           String           @unique
+  status          InvitationStatus @default(PENDING)
+  invitedByUserId String
+  expiresAt       DateTime
+  acceptedAt      DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  role            Role             @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  invitedByUser   User             @relation("InvitationCreatedBy", fields: [invitedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([status, expiresAt])
+}
+
+model RefreshToken {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Project {
+  id                  String                 @id @default(cuid())
+  name                String
+  description         String
+  type                ProjectType
+  status              ProjectStatus          @default(DRAFT)
+  country             String
+  region              String
+  latitude            Decimal?               @db.Decimal(10, 7)
+  longitude           Decimal?               @db.Decimal(10, 7)
+  areaHectares        Decimal?               @db.Decimal(14, 2)
+  estimatedCredits    Decimal?               @db.Decimal(14, 2)
+  vintageStartYear    Int?
+  vintageEndYear      Int?
+  developerId         String
+  verifierId          String?
+  certifierId         String?
+  standard            ProjectStandard
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+  developer           User                   @relation("ProjectDeveloper", fields: [developerId], references: [id], onDelete: Restrict)
+  verifier            User?                  @relation("ProjectVerifier", fields: [verifierId], references: [id], onDelete: SetNull)
+  certifier           User?                  @relation("ProjectCertifier", fields: [certifierId], references: [id], onDelete: SetNull)
+  documents           ProjectDocument[]
+  statusHistory       ProjectStatusHistory[]
+
+  @@index([developerId, status])
+  @@index([type, status])
+}
+
+model ProjectDocument {
+  id          String   @id @default(cuid())
+  projectId   String
+  name        String
+  url         String
+  type        String
+  uploadedAt  DateTime @default(now())
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+model ProjectStatusHistory {
+  id              String        @id @default(cuid())
+  projectId       String
+  fromStatus      ProjectStatus?
+  toStatus        ProjectStatus
+  changedByUserId String
+  note            String?
+  changedAt       DateTime      @default(now())
+  project         Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  changedByUser   User          @relation(fields: [changedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([projectId, changedAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  entityType String
+  entityId   String
+  action     String
+  userId     String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId, createdAt])
+}

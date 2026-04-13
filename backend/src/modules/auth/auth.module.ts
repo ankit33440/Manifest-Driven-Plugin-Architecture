@@ -1,22 +1,27 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'natures-registry-secret';
+import { JwtStrategy } from './strategies/jwt.strategy';
+import { AccessControlService } from './access-control.service';
+import { AuditModule } from '../audit/audit.module';
 
 @Module({
   imports: [
+    ConfigModule,
     PassportModule,
-    JwtModule.register({
-      global: true,
-      secret: JWT_SECRET,
-      signOptions: { expiresIn: '7d' },
+    JwtModule.registerAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.getOrThrow<string>('JWT_ACCESS_SECRET'),
+      }),
     }),
+    AuditModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService],
-  exports: [JwtModule],
+  providers: [AuthService, JwtStrategy, AccessControlService],
+  exports: [JwtModule, AuthService, AccessControlService],
 })
 export class AuthModule {}
