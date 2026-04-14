@@ -18,6 +18,27 @@ export default function Dashboard() {
   if (!user) return null;
 
   const widgets = getWidgetsFor(user.role);
+  const fullPageWidget = widgets.find((w) => w.fullPage);
+
+  // If a full-page widget is registered for this role, render it exclusively
+  if (fullPageWidget) {
+    let FullComponent: React.ComponentType<any> | null = null;
+    try {
+      FullComponent = componentRegistry.get(fullPageWidget.component);
+    } catch {
+      return (
+        <div className="p-6 text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-xl m-6">
+          Dashboard widget "{fullPageWidget.component}" not registered
+        </div>
+      );
+    }
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <FullComponent />
+      </Suspense>
+    );
+  }
+
   const roleLabel = user.role.replace(/_/g, ' ');
   const roleColor = ROLE_COLORS[user.role] || 'bg-gray-100 text-gray-700';
 
@@ -27,7 +48,7 @@ export default function Dashboard() {
       <div className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl p-6 mb-8 text-white">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold mb-1">Welcome back, {user.name} 👋</h1>
+            <h1 className="text-2xl font-bold mb-1">Welcome back, {user.name}</h1>
             <p className="text-green-100 text-sm">
               Manage carbon credits and sustainability projects on Nature's Registry
             </p>
@@ -41,7 +62,6 @@ export default function Dashboard() {
       {/* Widgets grid */}
       {widgets.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-          <span className="text-4xl mb-3">📊</span>
           <p className="text-lg font-medium">No widgets for your role</p>
           <p className="text-sm mt-1">Dashboard widgets will appear here when available</p>
         </div>
@@ -58,7 +78,6 @@ export default function Dashboard() {
                 </div>
               );
             }
-
             return (
               <Suspense key={widget.component} fallback={<PageLoader />}>
                 <WidgetComponent />

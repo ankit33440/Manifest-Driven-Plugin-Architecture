@@ -37,14 +37,17 @@
         { "path": "/projects", "method": "GET" },
         { "path": "/projects/:id", "method": "GET" },
         { "path": "/projects", "method": "POST" },
-        { "path": "/projects/:id/submit", "method": "PATCH" }
+        { "path": "/projects/:id", "method": "PATCH" },
+        { "path": "/projects/:id/submit", "method": "PATCH" },
+        { "path": "/projects/:id/documents", "method": "POST" }
       ],
       "nav": [
         { "label": "My Projects", "path": "/projects", "icon": "FolderOpen" }
       ],
       "pages": [
         { "path": "/projects", "component": "ProjectListPage", "title": "Projects" },
-        { "path": "/projects/new", "component": "ProjectCreatePage", "title": "New Project" },
+        { "path": "/projects/new", "component": "ProjectWizardPage", "title": "Register Project" },
+        { "path": "/projects/:id/edit", "component": "ProjectWizardPage", "title": "Edit Project" },
         { "path": "/projects/:id", "component": "ProjectDetailPage", "title": "Project Detail" }
       ],
       "sections": {
@@ -55,7 +58,7 @@
         ]
       },
       "dashboardWidgets": [
-        { "component": "ProjectStatsWidget", "order": 1 }
+        { "component": "ProjectDeveloperDashboard", "order": 1, "fullPage": true }
       ]
     },
     "VERIFIER": {

@@ -1,0 +1,35 @@
+{
+  "name": "verifier",
+  "version": "1.0.0",
+  "enabled": true,
+  "plugin": "./verifier.plugin",
+  "publicRoutes": [],
+  "roles": {
+    "VERIFIER": {
+      "routes": [
+        { "path": "/verifier/queue", "method": "GET" },
+        { "path": "/verifier/my-projects", "method": "GET" },
+        { "path": "/verifier/dashboard", "method": "GET" },
+        { "path": "/verifier/projects/:id/claim", "method": "PATCH" },
+        { "path": "/verifier/projects/:id/checklist", "method": "PATCH" },
+        { "path": "/verifier/projects/:id/request-info", "method": "PATCH" },
+        { "path": "/verifier/projects/:id/approve", "method": "PATCH" },
+        { "path": "/verifier/projects/:id/reject", "method": "PATCH" },
+        { "path": "/verifier/projects/:id/review", "method": "GET" }
+      ],
+      "nav": [
+        { "label": "Review Queue", "path": "/verifier/queue", "icon": "ClipboardList" }
+      ],
+      "pages": [
+        { "path": "/verifier/queue", "component": "VerifierQueuePage", "title": "Review Queue" },
+        { "path": "/verifier/projects/:id", "component": "VerifierProjectDetailPage", "title": "Review Project" }
+      ],
+      "sections": {},
+      "dashboardWidgets": [
+        { "component": "VerifierDashboard", "order": 1, "fullPage": true }
+      ]
+    }
+  },
+  "listensTo": [],
+  "emits": []
+}

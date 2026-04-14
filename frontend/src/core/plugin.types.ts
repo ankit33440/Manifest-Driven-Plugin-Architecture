@@ -30,6 +30,7 @@ export interface SectionManifest {
 export interface WidgetManifest {
   component: string;
   order: number;
+  fullPage?: boolean;
 }
 
 export interface RoleFeatures {

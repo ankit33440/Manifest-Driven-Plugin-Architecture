@@ -1,0 +1,38 @@
+{
+  "name": "admin",
+  "version": "1.0.0",
+  "enabled": true,
+  "plugin": "./admin.plugin",
+  "publicRoutes": [],
+  "roles": {
+    "SUPERADMIN": {
+      "routes": [
+        { "path": "/admin/stats", "method": "GET" },
+        { "path": "/admin/users", "method": "GET" },
+        { "path": "/admin/users/:id/approve", "method": "PATCH" },
+        { "path": "/admin/users/:id/reject", "method": "PATCH" },
+        { "path": "/admin/users/:id/suspend", "method": "PATCH" },
+        { "path": "/admin/users/:id/reactivate", "method": "PATCH" },
+        { "path": "/admin/users/:id/role", "method": "PATCH" },
+        { "path": "/admin/audit-logs", "method": "GET" },
+        { "path": "/admin/projects/:id/force-status", "method": "PATCH" }
+      ],
+      "nav": [
+        { "label": "Admin Panel", "path": "/admin", "icon": "Settings" },
+        { "label": "Users", "path": "/admin/users", "icon": "Users" },
+        { "label": "Audit Log", "path": "/admin/audit", "icon": "FileText" }
+      ],
+      "pages": [
+        { "path": "/admin", "component": "AdminDashboardPage", "title": "Admin Panel" },
+        { "path": "/admin/users", "component": "AdminUsersPage", "title": "User Management" },
+        { "path": "/admin/audit", "component": "AdminAuditPage", "title": "Audit Log" }
+      ],
+      "sections": {},
+      "dashboardWidgets": [
+        { "component": "AdminDashboard", "order": 1, "fullPage": true }
+      ]
+    }
+  },
+  "listensTo": [],
+  "emits": []
+}

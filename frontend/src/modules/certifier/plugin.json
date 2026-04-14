@@ -1,0 +1,31 @@
+{
+  "name": "certifier",
+  "version": "1.0.0",
+  "enabled": true,
+  "plugin": "./certifier.plugin",
+  "publicRoutes": [],
+  "roles": {
+    "CERTIFIER": {
+      "routes": [
+        { "path": "/certifier/queue", "method": "GET" },
+        { "path": "/certifier/dashboard", "method": "GET" },
+        { "path": "/certifier/projects/:id/certify", "method": "PATCH" },
+        { "path": "/certifier/projects/:id/reject", "method": "PATCH" },
+        { "path": "/certifier/projects/:id/batches", "method": "GET" }
+      ],
+      "nav": [
+        { "label": "Certification Queue", "path": "/certifier/queue", "icon": "Award" }
+      ],
+      "pages": [
+        { "path": "/certifier/queue", "component": "CertifierQueuePage", "title": "Certification Queue" },
+        { "path": "/certifier/projects/:id", "component": "CertifierProjectDetailPage", "title": "Certify Project" }
+      ],
+      "sections": {},
+      "dashboardWidgets": [
+        { "component": "CertifierDashboard", "order": 1, "fullPage": true }
+      ]
+    }
+  },
+  "listensTo": [],
+  "emits": []
+}

@@ -7,3 +7,24 @@
     @apply bg-gray-50 text-gray-900;
   }
 }
+
+@layer components {
+  .surface {
+    @apply rounded-2xl border border-stone-200 bg-white;
+  }
+  .field {
+    @apply block w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-stone-400 focus:border-slate-400;
+  }
+  .field-label {
+    @apply text-xs font-semibold uppercase tracking-widest text-stone-500;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-stone-50;
+  }
+  .status-badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold;
+  }
+}
