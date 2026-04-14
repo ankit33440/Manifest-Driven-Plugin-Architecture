@@ -1,33 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useForm, useFieldArray } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Plus, Trash2, ArrowLeft, CheckCircle2, Circle } from 'lucide-react';
 import api from '../../../core/api/axios';
 import PageLoader from '../../../components/PageLoader';
-
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-interface DocRow {
-  name: string;
-  url: string;
-  type: string;
-}
-
-interface FormData {
-  // Step 0 — Basic Info
-  name: string;
-  type: string;
-  standard: string;
-  description: string;
-  // Step 1 — Location
-  country: string;
-  region: string;
-  latitude: string;
-  longitude: string;
-  // Step 2 — Credits
-  areaHectares: string;
-  estimatedCredits: string;
-  vintageStartYear: string;
-  vintageEndYear: string;
-}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -50,441 +28,123 @@ const STANDARDS = [
 
 const DOC_TYPES = ['PDD', 'Validation Report', 'Methodology', 'Boundary Map', 'Other'];
 
-const STEPS = ['Basic Info', 'Location', 'Credits', 'Documents', 'Review'];
+// ─── Zod schema ────────────────────────────────────────────────────────────────
 
-// ─── Step indicator ───────────────────────────────────────────────────────────
-
-function StepIndicator({ current }: { current: number }) {
-  return (
-    <div className="flex items-center gap-0 mb-8">
-      {STEPS.map((label, i) => (
-        <React.Fragment key={label}>
-          <div className="flex flex-col items-center">
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${
-                i < current
-                  ? 'bg-slate-900 border-slate-900 text-white'
-                  : i === current
-                  ? 'bg-white border-green-500 text-green-600'
-                  : 'bg-white border-stone-200 text-stone-400'
-              }`}
-            >
-              {i < current ? '✓' : i + 1}
-            </div>
-            <span
-              className={`text-[10px] mt-1 font-medium ${
-                i === current ? 'text-green-600' : i < current ? 'text-slate-700' : 'text-stone-400'
-              }`}
-            >
-              {label}
-            </span>
-          </div>
-          {i < STEPS.length - 1 && (
-            <div
-              className={`flex-1 h-0.5 mb-4 mx-1 transition-colors ${
-                i < current ? 'bg-slate-900' : 'bg-stone-200'
-              }`}
-            />
-          )}
-        </React.Fragment>
-      ))}
-    </div>
+function optionalNum(min?: number, max?: number, msg?: string) {
+  return z.string().refine(
+    (val) => {
+      if (!val || val.trim() === '') return true;
+      const n = Number(val);
+      if (isNaN(n)) return false;
+      if (min !== undefined && n < min) return false;
+      if (max !== undefined && n > max) return false;
+      return true;
+    },
+    {
+      message:
+        msg ??
+        (min !== undefined && max !== undefined
+          ? `Must be between ${min} and ${max}`
+          : 'Must be a valid number'),
+    },
   );
 }
 
-// ─── Readiness sidebar ────────────────────────────────────────────────────────
-
-function ReadinessSidebar({
-  step,
-  onSubmit,
-  onSaveDraft,
-  submitting,
-}: {
-  step: number;
-  onSubmit: () => void;
-  onSaveDraft: () => void;
-  submitting: boolean;
-}) {
-  const checks = [
-    { label: 'Basic Information', done: step > 0 },
-    { label: 'Location Details', done: step > 1 },
-    { label: 'Credit Estimation', done: step > 2 },
-    { label: 'Required Documents', done: step > 3 },
-  ];
-
-  const readyCount = checks.filter((c) => c.done).length;
-  const pct = Math.round((readyCount / checks.length) * 100);
-
-  return (
-    <div className="rounded-2xl border border-stone-200 bg-white p-5 sticky top-6">
-      <h3 className="text-sm font-semibold text-slate-900 mb-1">Submission Readiness</h3>
-      <p className="text-xs text-stone-400 mb-4">{pct}% complete</p>
-
-      {/* Progress bar */}
-      <div className="h-1.5 bg-stone-100 rounded-full mb-5 overflow-hidden">
-        <div
-          className="h-full bg-green-500 rounded-full transition-all"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-
-      {/* Checklist */}
-      <ul className="space-y-2 mb-6">
-        {checks.map((c) => (
-          <li key={c.label} className="flex items-center gap-2 text-sm">
-            <span
-              className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${
-                c.done ? 'bg-green-500 text-white' : 'bg-stone-100 text-stone-400'
-              }`}
-            >
-              {c.done ? '✓' : '○'}
-            </span>
-            <span className={c.done ? 'text-slate-700' : 'text-stone-400'}>{c.label}</span>
-          </li>
-        ))}
-      </ul>
-
-      <button
-        onClick={onSubmit}
-        disabled={step < 4 || submitting}
-        className="btn-primary w-full mb-2"
-      >
-        {submitting ? 'Submitting…' : 'Submit for Verification'}
-      </button>
-      <button onClick={onSaveDraft} className="btn-secondary w-full text-sm">
-        Save Draft & Exit
-      </button>
-    </div>
+const schema = z
+  .object({
+    name: z.string().min(3, 'Name must be at least 3 characters'),
+    type: z.string().min(1, 'Project type is required'),
+    standard: z.string().min(1, 'Standard is required'),
+    description: z.string().min(10, 'Description must be at least 10 characters'),
+    country: z.string().min(1, 'Country is required'),
+    region: z.string().min(1, 'Region is required'),
+    latitude: optionalNum(-90, 90, 'Must be between -90 and 90'),
+    longitude: optionalNum(-180, 180, 'Must be between -180 and 180'),
+    areaHectares: optionalNum(0, undefined, 'Must be a positive number'),
+    estimatedCredits: optionalNum(0, undefined, 'Must be a positive number'),
+    vintageStartYear: optionalNum(1900, 2100, 'Enter a valid year (1900–2100)'),
+    vintageEndYear: optionalNum(1900, 2100, 'Enter a valid year (1900–2100)'),
+    documents: z
+      .array(
+        z.object({
+          id: z.string().optional(),
+          name: z.string(),
+          url: z.string(),
+          docType: z.string(),
+        }),
+      )
+      .default([]),
+  })
+  .refine(
+    (d) => {
+      if (d.vintageStartYear && d.vintageEndYear) {
+        return Number(d.vintageEndYear) >= Number(d.vintageStartYear);
+      }
+      return true;
+    },
+    { message: 'End year must be ≥ start year', path: ['vintageEndYear'] },
   );
-}
 
-// ─── Step forms ───────────────────────────────────────────────────────────────
+type FormValues = z.infer<typeof schema>;
 
-function Step0({
-  data,
-  onChange,
+const EMPTY_DEFAULTS: FormValues = {
+  name: '',
+  type: '',
+  standard: '',
+  description: '',
+  country: '',
+  region: '',
+  latitude: '',
+  longitude: '',
+  areaHectares: '',
+  estimatedCredits: '',
+  vintageStartYear: '',
+  vintageEndYear: '',
+  documents: [],
+};
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function FormSection({
+  title,
+  hint,
+  children,
 }: {
-  data: FormData;
-  onChange: (field: keyof FormData, value: string) => void;
+  title: string;
+  hint?: string;
+  children: React.ReactNode;
 }) {
   return (
-    <div className="space-y-4">
-      <div>
-        <label className="field-label mb-1.5 block">Project Name *</label>
-        <input
-          className="field"
-          placeholder="e.g. Amazon Basin Reforestation"
-          value={data.name}
-          onChange={(e) => onChange('name', e.target.value)}
-        />
+    <div className="surface p-6">
+      <div className="mb-5">
+        <h2 className="text-sm font-semibold text-ink">{title}</h2>
+        {hint && <p className="text-xs text-ink-muted mt-0.5">{hint}</p>}
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="field-label mb-1.5 block">Project Type *</label>
-          <select
-            className="field"
-            value={data.type}
-            onChange={(e) => onChange('type', e.target.value)}
-          >
-            <option value="">Select type…</option>
-            {PROJECT_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="field-label mb-1.5 block">Standard *</label>
-          <select
-            className="field"
-            value={data.standard}
-            onChange={(e) => onChange('standard', e.target.value)}
-          >
-            <option value="">Select standard…</option>
-            {STANDARDS.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-      <div>
-        <label className="field-label mb-1.5 block">Description *</label>
-        <textarea
-          className="field resize-none"
-          rows={5}
-          placeholder="Describe the project, its goals, methodology, and expected impact..."
-          value={data.description}
-          onChange={(e) => onChange('description', e.target.value)}
-        />
-      </div>
+      {children}
     </div>
   );
 }
 
-function Step1({
-  data,
-  onChange,
-}: {
-  data: FormData;
-  onChange: (field: keyof FormData, value: string) => void;
-}) {
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="field-label mb-1.5 block">Country *</label>
-          <input
-            className="field"
-            placeholder="e.g. Brazil"
-            value={data.country}
-            onChange={(e) => onChange('country', e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="field-label mb-1.5 block">Region *</label>
-          <input
-            className="field"
-            placeholder="e.g. Amazon Basin"
-            value={data.region}
-            onChange={(e) => onChange('region', e.target.value)}
-          />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="field-label mb-1.5 block">Latitude</label>
-          <input
-            className="field"
-            type="number"
-            step="any"
-            placeholder="-3.4653"
-            value={data.latitude}
-            onChange={(e) => onChange('latitude', e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="field-label mb-1.5 block">Longitude</label>
-          <input
-            className="field"
-            type="number"
-            step="any"
-            placeholder="-62.2159"
-            value={data.longitude}
-            onChange={(e) => onChange('longitude', e.target.value)}
-          />
-        </div>
-      </div>
-      <p className="text-xs text-stone-400">
-        Coordinates define the project centroid. A full geospatial boundary can be uploaded in
-        documents.
-      </p>
-    </div>
-  );
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return <p className="text-xs text-alert mt-1">{message}</p>;
 }
-
-function Step2({
-  data,
-  onChange,
-}: {
-  data: FormData;
-  onChange: (field: keyof FormData, value: string) => void;
-}) {
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="field-label mb-1.5 block">Area (Hectares)</label>
-          <input
-            className="field"
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="50000"
-            value={data.areaHectares}
-            onChange={(e) => onChange('areaHectares', e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="field-label mb-1.5 block">Estimated Credits (tCO₂)</label>
-          <input
-            className="field"
-            type="number"
-            min="0"
-            step="1"
-            placeholder="120000"
-            value={data.estimatedCredits}
-            onChange={(e) => onChange('estimatedCredits', e.target.value)}
-          />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="field-label mb-1.5 block">Vintage Start Year</label>
-          <input
-            className="field"
-            type="number"
-            placeholder="2024"
-            value={data.vintageStartYear}
-            onChange={(e) => onChange('vintageStartYear', e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="field-label mb-1.5 block">Vintage End Year</label>
-          <input
-            className="field"
-            type="number"
-            placeholder="2034"
-            value={data.vintageEndYear}
-            onChange={(e) => onChange('vintageEndYear', e.target.value)}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Step3({
-  docs,
-  onChange,
-}: {
-  docs: DocRow[];
-  onChange: (docs: DocRow[]) => void;
-}) {
-  function addRow() {
-    onChange([...docs, { name: '', url: '', type: 'PDD' }]);
-  }
-
-  function removeRow(i: number) {
-    onChange(docs.filter((_, idx) => idx !== i));
-  }
-
-  function updateRow(i: number, field: keyof DocRow, value: string) {
-    onChange(docs.map((d, idx) => (idx === i ? { ...d, [field]: value } : d)));
-  }
-
-  return (
-    <div className="space-y-4">
-      <p className="text-sm text-stone-500">
-        Upload links to project documents. A Project Design Document (PDD) is required for
-        verification.
-      </p>
-      {docs.map((doc, i) => (
-        <div key={i} className="flex gap-3 items-start">
-          <div className="flex-1 grid grid-cols-3 gap-2">
-            <input
-              className="field text-sm"
-              placeholder="Document name"
-              value={doc.name}
-              onChange={(e) => updateRow(i, 'name', e.target.value)}
-            />
-            <input
-              className="field text-sm"
-              placeholder="https://..."
-              value={doc.url}
-              onChange={(e) => updateRow(i, 'url', e.target.value)}
-            />
-            <select
-              className="field text-sm"
-              value={doc.type}
-              onChange={(e) => updateRow(i, 'type', e.target.value)}
-            >
-              {DOC_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-          </div>
-          <button
-            onClick={() => removeRow(i)}
-            className="mt-3 text-stone-400 hover:text-red-500 transition-colors text-sm"
-          >
-            ✕
-          </button>
-        </div>
-      ))}
-      <button onClick={addRow} className="btn-secondary text-sm">
-        + Add Document
-      </button>
-    </div>
-  );
-}
-
-function Step4({ data, docs }: { data: FormData; docs: DocRow[] }) {
-  const rows: [string, string][] = [
-    ['Project Name', data.name],
-    ['Type', data.type],
-    ['Standard', data.standard],
-    ['Country', data.country],
-    ['Region', data.region],
-    ['Latitude', data.latitude || '—'],
-    ['Longitude', data.longitude || '—'],
-    ['Area (ha)', data.areaHectares || '—'],
-    ['Est. Credits', data.estimatedCredits || '—'],
-    ['Vintage', data.vintageStartYear && data.vintageEndYear
-      ? `${data.vintageStartYear}–${data.vintageEndYear}`
-      : '—'],
-  ];
-
-  return (
-    <div className="space-y-5">
-      <div className="rounded-xl border border-stone-200 overflow-hidden">
-        <table className="w-full text-sm">
-          <tbody>
-            {rows.map(([label, value]) => (
-              <tr key={label} className="border-b border-stone-100 last:border-0">
-                <td className="py-2.5 px-4 text-stone-500 font-medium w-2/5">{label}</td>
-                <td className="py-2.5 px-4 text-slate-900">{value || '—'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <div>
-        <p className="field-label mb-2 block">Description</p>
-        <p className="text-sm text-slate-700 whitespace-pre-wrap bg-stone-50 rounded-xl p-4 border border-stone-100">
-          {data.description || '—'}
-        </p>
-      </div>
-      {docs.length > 0 && (
-        <div>
-          <p className="field-label mb-2 block">Documents ({docs.length})</p>
-          <ul className="space-y-1">
-            {docs.map((d, i) => (
-              <li key={i} className="text-sm text-slate-700 flex gap-2">
-                <span className="text-stone-400">{d.type}</span>
-                <span>{d.name}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Success screen ────────────────────────────────────────────────────────────
 
 function SuccessScreen({ projectId }: { projectId: string }) {
   const navigate = useNavigate();
   return (
     <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-6">
-      <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-5">
-        <span className="text-3xl">✓</span>
+      <div className="w-16 h-16 rounded-full bg-status-approved-bg flex items-center justify-center mb-5">
+        <CheckCircle2 size={32} className="text-status-approved-text" />
       </div>
-      <h2 className="text-2xl font-bold text-slate-900 mb-2">Project Successfully Submitted!</h2>
-      <p className="text-stone-500 text-sm max-w-sm mb-8">
-        Your project has been submitted for verification. Our team of verifiers will review your
-        submission and reach out if additional information is needed.
+      <h2 className="text-2xl font-bold text-ink mb-2">Project Submitted!</h2>
+      <p className="text-sm text-ink-muted max-w-sm mb-8">
+        Your project has been submitted for verification. Verifiers will review your submission and
+        reach out if additional information is needed.
       </p>
 
-      <div className="rounded-2xl border border-stone-200 bg-white p-5 w-full max-w-sm mb-6 text-left">
-        <p className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-3">
-          What happens next
-        </p>
+      <div className="surface p-5 w-full max-w-sm mb-6 text-left">
+        <p className="section-label mb-3">What happens next</p>
         {[
           'Verifier assignment (1–2 business days)',
           'Document review & site assessment',
@@ -492,10 +152,10 @@ function SuccessScreen({ projectId }: { projectId: string }) {
           'Registry approval & credit issuance',
         ].map((step, i) => (
           <div key={step} className="flex gap-3 items-start mb-3 last:mb-0">
-            <span className="w-5 h-5 rounded-full bg-stone-100 text-stone-500 text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
+            <span className="w-5 h-5 rounded-full bg-canvas text-ink-muted text-xs flex items-center justify-center flex-shrink-0 mt-0.5 font-semibold">
               {i + 1}
             </span>
-            <span className="text-sm text-slate-700">{step}</span>
+            <span className="text-sm text-ink">{step}</span>
           </div>
         ))}
       </div>
@@ -514,43 +174,41 @@ function SuccessScreen({ projectId }: { projectId: string }) {
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
-const EMPTY_FORM: FormData = {
-  name: '',
-  type: '',
-  standard: '',
-  description: '',
-  country: '',
-  region: '',
-  latitude: '',
-  longitude: '',
-  areaHectares: '',
-  estimatedCredits: '',
-  vintageStartYear: '',
-  vintageEndYear: '',
-};
-
 export default function ProjectCreatePage() {
   const navigate = useNavigate();
   const { id: editId } = useParams<{ id?: string }>();
   const isEditMode = Boolean(editId);
 
   const [initialLoading, setInitialLoading] = useState(isEditMode);
-  const [step, setStep] = useState(0);
-  const [formData, setFormData] = useState<FormData>(EMPTY_FORM);
-  const [docs, setDocs] = useState<DocRow[]>([]);
   const [projectId, setProjectId] = useState<string | null>(editId ?? null);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [apiError, setApiError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  // In edit mode: fetch existing project and pre-populate all fields
+  const {
+    register,
+    control,
+    handleSubmit,
+    getValues,
+    watch,
+    reset,
+    formState: { errors },
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: EMPTY_DEFAULTS,
+  });
+
+  const { fields, append, remove } = useFieldArray({ control, name: 'documents' });
+
+  // Load existing project in edit mode
   useEffect(() => {
     if (!editId) return;
     api
       .get(`/projects/${editId}`)
       .then((r) => {
         const p = r.data;
-        setFormData({
+        reset({
           name: p.name ?? '',
           type: p.type ?? '',
           standard: p.standard ?? '',
@@ -563,192 +221,446 @@ export default function ProjectCreatePage() {
           estimatedCredits: p.estimatedCredits != null ? String(p.estimatedCredits) : '',
           vintageStartYear: p.vintageStartYear != null ? String(p.vintageStartYear) : '',
           vintageEndYear: p.vintageEndYear != null ? String(p.vintageEndYear) : '',
-        });
-        setDocs(
-          (p.documents ?? []).map((d: any) => ({
+          documents: (p.documents ?? []).map((d: any) => ({
+            id: d.id,
             name: d.name,
             url: d.url,
-            type: d.type ?? 'Other',
+            docType: d.type ?? 'Other',
           })),
-        );
+        });
       })
-      .catch(() => setError('Could not load project'))
+      .catch(() => setApiError('Could not load project'))
       .finally(() => setInitialLoading(false));
-  }, [editId]);
+  }, [editId, reset]);
 
   if (initialLoading) return <PageLoader />;
 
-  function setField(field: keyof FormData, value: string) {
-    setFormData((f) => ({ ...f, [field]: value }));
-  }
+  // ── Helpers ────────────────────────────────────────────────────────────────
 
   function numOrUndef(v: string) {
     return v !== '' ? Number(v) : undefined;
   }
 
-  async function handleNext() {
-    setError('');
-    setLoading(true);
-    try {
-      if (step === 0) {
-        const body = {
-          name: formData.name,
-          type: formData.type,
-          standard: formData.standard,
-          description: formData.description,
-          country: 'TBD',
-          region: 'TBD',
-        };
-        if (isEditMode && projectId) {
-          // Edit mode: PATCH instead of POST, keep existing projectId
-          await api.patch(`/projects/${projectId}`, body);
-        } else {
-          const res = await api.post('/projects', body);
-          setProjectId(res.data.id);
-        }
-      } else if (step === 1 && projectId) {
-        await api.patch(`/projects/${projectId}`, {
-          country: formData.country,
-          region: formData.region,
-          latitude: numOrUndef(formData.latitude),
-          longitude: numOrUndef(formData.longitude),
-        });
-      } else if (step === 2 && projectId) {
-        await api.patch(`/projects/${projectId}`, {
-          areaHectares: numOrUndef(formData.areaHectares),
-          estimatedCredits: numOrUndef(formData.estimatedCredits),
-          vintageStartYear: numOrUndef(formData.vintageStartYear),
-          vintageEndYear: numOrUndef(formData.vintageEndYear),
-        });
-      } else if (step === 3 && projectId) {
-        for (const doc of docs) {
-          if (doc.name && doc.url) {
-            await api.post(`/projects/${projectId}/documents`, doc);
-          }
-        }
-      }
-      setStep((s) => s + 1);
-    } catch (err: any) {
-      const msg = err.response?.data?.message;
-      setError(Array.isArray(msg) ? msg.join(', ') : msg || 'Something went wrong');
-    } finally {
-      setLoading(false);
-    }
-  }
+  async function persistProject(values: FormValues, pid: string | null): Promise<string> {
+    const body = {
+      name: values.name,
+      type: values.type,
+      standard: values.standard,
+      description: values.description,
+      country: values.country || 'TBD',
+      region: values.region || 'TBD',
+      latitude: numOrUndef(values.latitude ?? ''),
+      longitude: numOrUndef(values.longitude ?? ''),
+      areaHectares: numOrUndef(values.areaHectares ?? ''),
+      estimatedCredits: numOrUndef(values.estimatedCredits ?? ''),
+      vintageStartYear: numOrUndef(values.vintageStartYear ?? ''),
+      vintageEndYear: numOrUndef(values.vintageEndYear ?? ''),
+    };
 
-  async function handleSubmit() {
-    if (!projectId) return;
-    setError('');
-    setLoading(true);
-    try {
-      await api.patch(`/projects/${projectId}/submit`);
-      setIsSubmitted(true);
-    } catch (err: any) {
-      const msg = err.response?.data?.message;
-      setError(Array.isArray(msg) ? msg.join(', ') : msg || 'Submission failed');
-    } finally {
-      setLoading(false);
+    let id = pid;
+    if (id) {
+      await api.patch(`/projects/${id}`, body);
+    } else {
+      const res = await api.post('/projects', body);
+      id = res.data.id;
+      setProjectId(id);
     }
+
+    // POST only new documents (those without an id)
+    const newDocs = values.documents.filter((d) => !d.id && d.name && d.url);
+    for (const doc of newDocs) {
+      await api.post(`/projects/${id}/documents`, {
+        name: doc.name,
+        url: doc.url,
+        type: doc.docType,
+      });
+    }
+
+    return id!;
   }
 
   async function handleSaveDraft() {
-    // In create mode, step 0 not yet saved → save it first
-    if (!isEditMode && step === 0 && formData.name && formData.type && formData.standard && formData.description) {
-      try {
-        const res = await api.post('/projects', {
-          name: formData.name,
-          type: formData.type,
-          standard: formData.standard,
-          description: formData.description,
-          country: 'TBD',
-          region: 'TBD',
-        });
-        setProjectId(res.data.id);
-      } catch {
-        // navigate anyway
-      }
+    const values = getValues();
+    setApiError('');
+    setSaving(true);
+    try {
+      await persistProject(values, projectId);
+      navigate('/projects');
+    } catch (err: any) {
+      const msg = err.response?.data?.message;
+      setApiError(Array.isArray(msg) ? msg.join(', ') : msg || 'Failed to save draft');
+    } finally {
+      setSaving(false);
     }
-    // In edit mode data is already persisted after each Next — just navigate
-    navigate(editId ? `/projects/${editId}` : '/projects');
   }
+
+  const onSubmit = async (values: FormValues) => {
+    setApiError('');
+    setSubmitting(true);
+    try {
+      const id = await persistProject(values, projectId);
+      await api.patch(`/projects/${id}/submit`);
+      setIsSubmitted(true);
+    } catch (err: any) {
+      const msg = err.response?.data?.message;
+      setApiError(Array.isArray(msg) ? msg.join(', ') : msg || 'Submission failed');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ── Readiness (watched values) ─────────────────────────────────────────────
+  const [wName, wType, wStandard, wDescription, wCountry, wRegion] = watch([
+    'name',
+    'type',
+    'standard',
+    'description',
+    'country',
+    'region',
+  ]);
+
+  const basicDone =
+    (wName?.length ?? 0) >= 3 && !!wType && !!wStandard && (wDescription?.length ?? 0) >= 10;
+  const locationDone = !!wCountry && !!wRegion;
+
+  const readinessItems = [
+    { label: 'Basic Information', done: basicDone },
+    { label: 'Location Details', done: locationDone },
+    { label: 'Credit Estimation', done: true, optional: true },
+    { label: 'Documents', done: true, optional: true },
+  ];
+  const requiredDone = [basicDone, locationDone].filter(Boolean).length;
+  const pct = Math.round((requiredDone / 2) * 100);
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   if (isSubmitted && projectId) {
     return (
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className="page-container">
         <SuccessScreen projectId={projectId} />
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="page-container">
+      {/* Page header */}
       <div className="mb-6">
         <button
-          onClick={() =>
-            step > 0
-              ? setStep((s) => s - 1)
-              : navigate(editId ? `/projects/${editId}` : '/projects')
-          }
-          className="text-sm text-stone-400 hover:text-slate-700 transition-colors"
+          onClick={() => navigate(editId ? `/projects/${editId}` : '/projects')}
+          className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink transition-colors mb-3"
         >
-          ← {step > 0 ? 'Back' : isEditMode ? 'Back to Project' : 'Cancel'}
+          <ArrowLeft size={15} />
+          {isEditMode ? 'Back to Project' : 'Cancel'}
         </button>
-        <h1 className="text-2xl font-bold text-slate-900 mt-2">
+        <h1 className="page-title">
           {isEditMode ? 'Edit Draft Project' : 'Register New Project'}
         </h1>
-        <p className="text-sm text-stone-500">
+        <p className="text-sm text-ink-muted mt-1">
           {isEditMode
             ? 'Update your draft and submit for verification when ready.'
-            : 'Complete all steps to submit your project for verification.'}
+            : 'Fill in the details below. Save as draft at any time, or submit when ready.'}
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main form */}
-        <div className="lg:col-span-2">
-          <div className="rounded-2xl border border-stone-200 bg-white p-6">
-            <StepIndicator current={step} />
+      <form onSubmit={handleSubmit(onSubmit)} noValidate>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* ── Left: form sections ── */}
+          <div className="lg:col-span-2 space-y-5">
 
-            <h2 className="text-base font-semibold text-slate-900 mb-5">
-              Step {step + 1}: {STEPS[step]}
-            </h2>
+            {/* Section 1: Basic Information */}
+            <FormSection title="Basic Information">
+              <div className="space-y-4">
+                <div>
+                  <label className="field-label">Project Name *</label>
+                  <input
+                    {...register('name')}
+                    className={`field mt-1 ${errors.name ? 'border-alert focus:ring-alert/20' : ''}`}
+                    placeholder="e.g. Amazon Basin Reforestation Initiative"
+                  />
+                  <FieldError message={errors.name?.message} />
+                </div>
 
-            {step === 0 && <Step0 data={formData} onChange={setField} />}
-            {step === 1 && <Step1 data={formData} onChange={setField} />}
-            {step === 2 && <Step2 data={formData} onChange={setField} />}
-            {step === 3 && <Step3 docs={docs} onChange={setDocs} />}
-            {step === 4 && <Step4 data={formData} docs={docs} />}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="field-label">Project Type *</label>
+                    <select
+                      {...register('type')}
+                      className={`field mt-1 ${errors.type ? 'border-alert focus:ring-alert/20' : ''}`}
+                    >
+                      <option value="">Select type…</option>
+                      {PROJECT_TYPES.map((t) => (
+                        <option key={t.value} value={t.value}>
+                          {t.label}
+                        </option>
+                      ))}
+                    </select>
+                    <FieldError message={errors.type?.message} />
+                  </div>
 
-            {error && (
-              <div className="mt-4 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">
-                {error}
+                  <div>
+                    <label className="field-label">Standard *</label>
+                    <select
+                      {...register('standard')}
+                      className={`field mt-1 ${errors.standard ? 'border-alert focus:ring-alert/20' : ''}`}
+                    >
+                      <option value="">Select standard…</option>
+                      {STANDARDS.map((s) => (
+                        <option key={s.value} value={s.value}>
+                          {s.label}
+                        </option>
+                      ))}
+                    </select>
+                    <FieldError message={errors.standard?.message} />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="field-label">Description *</label>
+                  <textarea
+                    {...register('description')}
+                    className={`field mt-1 resize-none ${errors.description ? 'border-alert focus:ring-alert/20' : ''}`}
+                    rows={5}
+                    placeholder="Describe the project, its goals, methodology, and expected environmental impact…"
+                  />
+                  <FieldError message={errors.description?.message} />
+                </div>
               </div>
-            )}
+            </FormSection>
 
-            {step < 4 && (
-              <div className="mt-6 flex justify-end">
+            {/* Section 2: Location */}
+            <FormSection
+              title="Location"
+              hint="Coordinates define the project centroid. A full boundary can be uploaded in documents."
+            >
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="field-label">Country *</label>
+                    <input
+                      {...register('country')}
+                      className={`field mt-1 ${errors.country ? 'border-alert focus:ring-alert/20' : ''}`}
+                      placeholder="e.g. Brazil"
+                    />
+                    <FieldError message={errors.country?.message} />
+                  </div>
+                  <div>
+                    <label className="field-label">Region *</label>
+                    <input
+                      {...register('region')}
+                      className={`field mt-1 ${errors.region ? 'border-alert focus:ring-alert/20' : ''}`}
+                      placeholder="e.g. Amazon Basin"
+                    />
+                    <FieldError message={errors.region?.message} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="field-label">Latitude</label>
+                    <input
+                      {...register('latitude')}
+                      type="number"
+                      step="any"
+                      className={`field mt-1 ${errors.latitude ? 'border-alert focus:ring-alert/20' : ''}`}
+                      placeholder="-3.4653"
+                    />
+                    <FieldError message={errors.latitude?.message} />
+                  </div>
+                  <div>
+                    <label className="field-label">Longitude</label>
+                    <input
+                      {...register('longitude')}
+                      type="number"
+                      step="any"
+                      className={`field mt-1 ${errors.longitude ? 'border-alert focus:ring-alert/20' : ''}`}
+                      placeholder="-62.2159"
+                    />
+                    <FieldError message={errors.longitude?.message} />
+                  </div>
+                </div>
+              </div>
+            </FormSection>
+
+            {/* Section 3: Credit Estimation */}
+            <FormSection title="Credit Estimation" hint="All fields in this section are optional.">
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="field-label">Area (Hectares)</label>
+                    <input
+                      {...register('areaHectares')}
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className={`field mt-1 ${errors.areaHectares ? 'border-alert focus:ring-alert/20' : ''}`}
+                      placeholder="50000"
+                    />
+                    <FieldError message={errors.areaHectares?.message} />
+                  </div>
+                  <div>
+                    <label className="field-label">Estimated Credits (tCO₂)</label>
+                    <input
+                      {...register('estimatedCredits')}
+                      type="number"
+                      min="0"
+                      step="1"
+                      className={`field mt-1 ${errors.estimatedCredits ? 'border-alert focus:ring-alert/20' : ''}`}
+                      placeholder="120000"
+                    />
+                    <FieldError message={errors.estimatedCredits?.message} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="field-label">Vintage Start Year</label>
+                    <input
+                      {...register('vintageStartYear')}
+                      type="number"
+                      className={`field mt-1 ${errors.vintageStartYear ? 'border-alert focus:ring-alert/20' : ''}`}
+                      placeholder="2024"
+                    />
+                    <FieldError message={errors.vintageStartYear?.message} />
+                  </div>
+                  <div>
+                    <label className="field-label">Vintage End Year</label>
+                    <input
+                      {...register('vintageEndYear')}
+                      type="number"
+                      className={`field mt-1 ${errors.vintageEndYear ? 'border-alert focus:ring-alert/20' : ''}`}
+                      placeholder="2034"
+                    />
+                    <FieldError message={errors.vintageEndYear?.message} />
+                  </div>
+                </div>
+              </div>
+            </FormSection>
+
+            {/* Section 4: Documents */}
+            <FormSection
+              title="Supporting Documents"
+              hint="A Project Design Document (PDD) is required for verification."
+            >
+              <div className="space-y-3">
+                {fields.length === 0 && (
+                  <p className="text-sm text-ink-faint py-2">No documents added yet.</p>
+                )}
+
+                {fields.map((field, i) => (
+                  <div key={field.id} className="flex gap-2 items-start">
+                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <input
+                        {...register(`documents.${i}.name`)}
+                        className="field text-sm"
+                        placeholder="Document name"
+                      />
+                      <input
+                        {...register(`documents.${i}.url`)}
+                        className="field text-sm"
+                        placeholder="https://…"
+                      />
+                      <select
+                        {...register(`documents.${i}.docType`)}
+                        className="field text-sm"
+                      >
+                        {DOC_TYPES.map((t) => (
+                          <option key={t} value={t}>
+                            {t}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => remove(i)}
+                      className="mt-2.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-ink-faint hover:bg-canvas hover:text-alert transition-colors"
+                      aria-label="Remove document"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+
                 <button
-                  onClick={handleNext}
-                  disabled={loading}
-                  className="btn-primary"
+                  type="button"
+                  onClick={() => append({ name: '', url: '', docType: 'PDD' })}
+                  className="btn-secondary text-sm inline-flex items-center gap-1.5 mt-1"
                 >
-                  {loading ? 'Saving…' : 'Next →'}
+                  <Plus size={14} />
+                  Add Document
                 </button>
+              </div>
+            </FormSection>
+
+            {/* API error */}
+            {apiError && (
+              <div className="rounded-lg bg-status-rejected-bg border border-status-rejected-text/20 text-status-rejected-text text-sm px-4 py-3">
+                {apiError}
               </div>
             )}
           </div>
-        </div>
 
-        {/* Sidebar */}
-        <div>
-          <ReadinessSidebar
-            step={step}
-            onSubmit={handleSubmit}
-            onSaveDraft={handleSaveDraft}
-            submitting={loading && step === 4}
-          />
+          {/* ── Right: readiness sidebar ── */}
+          <div className="lg:col-span-1">
+            <div className="surface p-5 sticky top-6 space-y-5">
+              <div>
+                <h3 className="text-sm font-semibold text-ink">Submission Readiness</h3>
+                <p className="text-xs text-ink-muted mt-0.5">{pct}% required fields complete</p>
+              </div>
+
+              {/* Progress bar */}
+              <div className="h-1.5 bg-canvas rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-accent rounded-full transition-all duration-500"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+
+              {/* Checklist */}
+              <ul className="space-y-2.5">
+                {readinessItems.map((item) => (
+                  <li key={item.label} className="flex items-center gap-2.5">
+                    {item.done ? (
+                      <CheckCircle2 size={16} className="text-status-approved-text flex-shrink-0" />
+                    ) : (
+                      <Circle size={16} className="text-line-strong flex-shrink-0" />
+                    )}
+                    <span className={`text-sm ${item.done ? 'text-ink' : 'text-ink-muted'}`}>
+                      {item.label}
+                      {item.optional && (
+                        <span className="text-xs text-ink-faint ml-1">(optional)</span>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+
+              <div className="space-y-2.5 pt-1">
+                <button
+                  type="submit"
+                  disabled={submitting || saving}
+                  className="btn-primary w-full"
+                >
+                  {submitting ? 'Submitting…' : 'Submit for Verification'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveDraft}
+                  disabled={saving || submitting}
+                  className="btn-secondary w-full"
+                >
+                  {saving ? 'Saving…' : 'Save as Draft'}
+                </button>
+              </div>
+
+              <p className="text-xs text-ink-faint">
+                Draft saves your progress without validation. Submit triggers a full review.
+              </p>
+            </div>
+          </div>
         </div>
-      </div>
+      </form>
     </div>
   );
 }

@@ -36,16 +36,16 @@ export default function Sidebar({ onClose }: SidebarProps) {
     .join('');
 
   return (
-    <aside className="flex h-full w-sidebar flex-col bg-sidebar-bg">
-      {/* Brand */}
-      <div className="flex items-center gap-3 border-b border-sidebar-border px-5 py-[14px]">
+    <aside className="flex h-full w-sidebar flex-col bg-surface border-r border-line">
+      {/* Brand — stays dark for contrast */}
+      <div className="flex items-center gap-3 bg-sidebar-bg px-5 py-[14px]">
         {/* Logo mark */}
         <div className="relative h-10 w-10 flex-shrink-0 overflow-hidden rounded-sm bg-sidebar-bg-active">
           <div className="absolute left-0 top-0 h-5 w-5 bg-brand-lime" />
           <div className="absolute right-0 top-0 h-5 w-5 bg-brand-lime [clip-path:polygon(0_0,100%_0,100%_100%)]" />
           <div className="absolute bottom-0 left-0 h-5 w-5 bg-brand-teal [clip-path:polygon(0_0,100%_100%,0_100%)]" />
         </div>
-        <div className="leading-none text-sidebar-text">
+        <div className="leading-none text-white">
           <div className="text-[18px] font-extrabold tracking-[-0.03em]">Nature's</div>
           <div className="text-[18px] font-extrabold tracking-[-0.03em]">Registry</div>
         </div>
@@ -97,24 +97,24 @@ export default function Sidebar({ onClose }: SidebarProps) {
       </nav>
 
       {/* User footer */}
-      <div className="border-t border-sidebar-border px-4 py-4">
+      <div className="border-t border-line px-4 py-4">
         <div className="flex items-center gap-3">
           {/* Avatar */}
           <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border-2 border-brand-lime/60 bg-[#e7d18e] text-[12px] font-bold text-sidebar-bg">
             {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-sidebar-text truncate leading-tight">
+            <p className="text-sm font-semibold text-ink truncate leading-tight">
               {user.name}
             </p>
-            <p className="text-xs text-sidebar-text-muted truncate leading-tight mt-0.5">
+            <p className="text-xs text-ink-muted truncate leading-tight mt-0.5">
               {roleLabel}
             </p>
           </div>
           <button
             onClick={logout}
             title="Sign out"
-            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md text-sidebar-text-muted transition-colors hover:bg-sidebar-bg-hover hover:text-sidebar-text"
+            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-canvas hover:text-ink"
           >
             <LucideIcons.LogOut size={15} />
           </button>

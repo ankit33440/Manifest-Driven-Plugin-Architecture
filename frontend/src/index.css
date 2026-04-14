@@ -134,10 +134,10 @@
   }
 
   .nav-item-default {
-    @apply nav-item text-sidebar-text-muted hover:bg-sidebar-bg-hover hover:text-sidebar-text;
+    @apply nav-item text-ink-muted hover:bg-canvas hover:text-ink;
   }
 
   .nav-item-active {
-    @apply nav-item bg-sidebar-bg-active text-sidebar-text shadow-nav;
+    @apply nav-item bg-accent text-white;
   }
 }
