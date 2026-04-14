@@ -5,9 +5,10 @@ interface ProjectInfoProps {
   project: {
     id: string;
     name: string;
-    type: string;
+    enrollment: string | null;
     status: string;
-    location: string;
+    geocodedAddress: string | null;
+    country: string | null;
     description: string;
     developerId: string;
     createdAt: string;
@@ -28,12 +29,12 @@ export default function ProjectInfo({ project }: ProjectInfoProps) {
           <dd className="mt-1"><StatusBadge status={project.status} /></dd>
         </div>
         <div>
-          <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Type</dt>
-          <dd className="mt-1 text-sm text-gray-900">{project.type.replace(/_/g, ' ')}</dd>
+          <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Enrollment</dt>
+          <dd className="mt-1 text-sm text-gray-900">{project.enrollment ?? '—'}</dd>
         </div>
         <div>
           <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Location</dt>
-          <dd className="mt-1 text-sm text-gray-900">{project.location}</dd>
+          <dd className="mt-1 text-sm text-gray-900">{project.geocodedAddress ?? project.country ?? '—'}</dd>
         </div>
         <div className="sm:col-span-2">
           <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider">Description</dt>

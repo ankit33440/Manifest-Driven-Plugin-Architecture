@@ -12,17 +12,20 @@ import CertifierAction from '../components/CertifierAction';
 interface Project {
   id: string;
   name: string;
-  type: string;
   status: string;
-  standard: string;
-  country: string;
-  region: string;
-  latitude: number | null;
-  longitude: number | null;
+  projectProponent: string | null;
+  startDate: string | null;
+  enrollment: string | null;
+  protocol: string | null;
+  protocolVersion: string | null;
+  applicationYear: number | null;
+  vintage: number | null;
+  proposedCarbonCredits: number | null;
+  averageAccrualRate: number | null;
+  geocodedAddress: string | null;
+  country: string | null;
+  region: string | null;
   areaHectares: number | null;
-  estimatedCredits: number | null;
-  vintageStartYear: number | null;
-  vintageEndYear: number | null;
   developerId: string;
   assignedVerifierId: string | null;
   assignedCertifierId: string | null;
@@ -76,18 +79,15 @@ function StatusBadge({ status }: { status: string }) {
 
 function InfoGrid({ project }: { project: Project }) {
   const rows: [string, string][] = [
-    ['Type', project.type.replace(/_/g, ' ')],
-    ['Standard', project.standard],
-    ['Country', project.country],
-    ['Region', project.region],
+    ['Enrollment', project.enrollment ?? '—'],
+    ['Protocol', project.protocol ? `${project.protocol}${project.protocolVersion ? ` v${project.protocolVersion}` : ''}` : '—'],
+    ['Country', project.country ?? '—'],
+    ['Region', project.region ?? '—'],
     ['Area', project.areaHectares ? `${Number(project.areaHectares).toLocaleString()} ha` : '—'],
-    ['Est. Credits', project.estimatedCredits ? `${Number(project.estimatedCredits).toLocaleString()} tCO₂` : '—'],
-    [
-      'Vintage Period',
-      project.vintageStartYear && project.vintageEndYear
-        ? `${project.vintageStartYear}–${project.vintageEndYear}`
-        : '—',
-    ],
+    ['Proposed Credits', project.proposedCarbonCredits ? `${Number(project.proposedCarbonCredits).toLocaleString()} tCO₂` : '—'],
+    ['Vintage', project.vintage ? String(project.vintage) : '—'],
+    ['Application Year', project.applicationYear ? String(project.applicationYear) : '—'],
+    ['Accrual Rate', project.averageAccrualRate ? `${project.averageAccrualRate}%` : '—'],
     ['Created', new Date(project.createdAt).toLocaleDateString()],
   ];
 
@@ -430,7 +430,7 @@ export default function ProjectDetailPage() {
             <div>
               <h1 className="text-2xl font-bold mb-1">{project.name}</h1>
               <p className="text-green-200 text-sm">
-                {project.standard} · {project.id.slice(0, 8).toUpperCase()} · {project.country}
+                {project.protocol ?? project.enrollment ?? '—'} · {project.id.slice(0, 8).toUpperCase()} · {project.country}
               </p>
             </div>
             <StatusBadge status={project.status} />

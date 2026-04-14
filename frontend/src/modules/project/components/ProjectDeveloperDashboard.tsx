@@ -7,11 +7,11 @@ interface Project {
   id: string;
   name: string;
   status: string;
-  type: string;
-  country: string;
-  region: string;
-  estimatedCredits: number | null;
-  vintageStartYear: number | null;
+  enrollment: string | null;
+  country: string | null;
+  region: string | null;
+  proposedCarbonCredits: number | null;
+  vintage: number | null;
   createdAt: string;
 }
 
@@ -83,7 +83,7 @@ function ProjectLifecycleRow({ project }: { project: Project }) {
         <div>
           <p className="text-sm font-semibold text-slate-900">{project.name}</p>
           <p className="text-xs text-stone-400">
-            {project.type.replace(/_/g, ' ')} · {project.country}
+            {project.enrollment ?? '—'} · {project.country}
           </p>
         </div>
         <StatusBadge status={project.status} />
@@ -136,7 +136,7 @@ export default function ProjectDeveloperDashboard() {
 
   const totalCredits = projects
     .filter((p) => ['CERTIFIED', 'ACTIVE', 'VERIFIED'].includes(p.status))
-    .reduce((sum, p) => sum + Number(p.estimatedCredits ?? 0), 0);
+    .reduce((sum, p) => sum + Number(p.proposedCarbonCredits ?? 0), 0);
 
   const activeProjects = projects.filter(
     (p) => !['DRAFT', 'REJECTED'].includes(p.status),
@@ -149,8 +149,8 @@ export default function ProjectDeveloperDashboard() {
   const vintageGroups = Object.entries(
     projects.reduce(
       (acc, p) => {
-        const yr = String(p.vintageStartYear ?? 'Unknown');
-        acc[yr] = (acc[yr] ?? 0) + Number(p.estimatedCredits ?? 0);
+        const yr = String(p.vintage ?? 'Unknown');
+        acc[yr] = (acc[yr] ?? 0) + Number(p.proposedCarbonCredits ?? 0);
         return acc;
       },
       {} as Record<string, number>,
@@ -317,7 +317,7 @@ export default function ProjectDeveloperDashboard() {
                 >
                   <p className="text-sm font-medium text-slate-900 truncate">{p.name}</p>
                   <p className="text-xs text-stone-400 mt-0.5">
-                    {p.type.replace(/_/g, ' ')} · {p.country}
+                    {p.enrollment ?? '—'} · {p.country}
                   </p>
                 </button>
               ))}

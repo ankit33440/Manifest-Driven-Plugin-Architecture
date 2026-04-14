@@ -8,11 +8,11 @@ import PageLoader from '../../../components/PageLoader';
 interface Project {
   id: string;
   name: string;
-  type: string;
-  standard: string;
+  enrollment: string | null;
+  protocol: string | null;
   status: string;
-  country: string;
-  estimatedCredits: number | null;
+  country: string | null;
+  proposedCarbonCredits: number | null;
   updatedAt: string;
 }
 
@@ -103,7 +103,7 @@ export default function CertifierDashboard() {
             <table className="min-w-full divide-y divide-stone-100">
               <thead>
                 <tr>
-                  {['Project', 'Standard', 'Country', 'Est. Credits', ''].map((h) => (
+                  {['Project', 'Protocol', 'Country', 'Proposed Credits', ''].map((h) => (
                     <th key={h} className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-stone-400">
                       {h}
                     </th>
@@ -115,12 +115,12 @@ export default function CertifierDashboard() {
                   <tr key={p.id} className="hover:bg-stone-50 transition-colors">
                     <td className="px-3 py-3">
                       <p className="text-sm font-medium text-slate-900 truncate max-w-[180px]">{p.name}</p>
-                      <p className="text-xs text-stone-400">{p.type.replace(/_/g, ' ')}</p>
+                      <p className="text-xs text-stone-400">{p.enrollment ?? '—'}</p>
                     </td>
-                    <td className="px-3 py-3 text-sm text-stone-600">{p.standard}</td>
+                    <td className="px-3 py-3 text-sm text-stone-600">{p.protocol ?? '—'}</td>
                     <td className="px-3 py-3 text-sm text-stone-600">{p.country}</td>
                     <td className="px-3 py-3 text-sm text-stone-600">
-                      {p.estimatedCredits ? `${Number(p.estimatedCredits).toLocaleString()} tCO₂` : '—'}
+                      {p.proposedCarbonCredits ? `${Number(p.proposedCarbonCredits).toLocaleString()} tCO₂` : '—'}
                     </td>
                     <td className="px-3 py-3">
                       <button

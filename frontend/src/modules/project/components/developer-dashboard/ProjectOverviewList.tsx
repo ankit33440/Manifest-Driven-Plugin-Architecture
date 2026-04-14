@@ -6,10 +6,10 @@ export interface DeveloperProject {
   id: string;
   name: string;
   status: string;
-  type: string;
-  country: string;
-  region: string;
-  estimatedCredits: number | null;
+  enrollment: string | null;
+  country: string | null;
+  region: string | null;
+  proposedCarbonCredits: number | null;
   createdAt: string;
 }
 
@@ -38,16 +38,16 @@ export default function ProjectOverviewList({
                 <ProjectStatusBadge status={project.status} />
               </div>
               <p className="mt-2 text-sm text-slate-500">
-                {project.type.replace(/_/g, ' ')}
+                {project.enrollment ?? '—'}
               </p>
               <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-slate-500">
                 <span className="inline-flex items-center gap-1.5">
                   <MapPin size={14} />
-                  {project.country}, {project.region}
+                  {project.country}{project.region ? `, ${project.region}` : ''}
                 </span>
                 <span>
-                  {project.estimatedCredits != null
-                    ? `${project.estimatedCredits.toLocaleString()} tCO2`
+                  {project.proposedCarbonCredits != null
+                    ? `${Number(project.proposedCarbonCredits).toLocaleString()} tCO₂`
                     : 'Credits pending'}
                 </span>
               </div>

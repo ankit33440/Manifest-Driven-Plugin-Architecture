@@ -8,10 +8,10 @@ import PageLoader from '../../../components/PageLoader';
 interface Project {
   id: string;
   name: string;
-  type: string;
+  enrollment: string | null;
   status: string;
-  country: string;
-  region: string;
+  country: string | null;
+  region: string | null;
   createdAt: string;
   assignedVerifierId: string | null;
 }
@@ -61,7 +61,7 @@ export default function VerifierQueuePage() {
       render: (p) => (
         <div>
           <p className="font-medium text-slate-900">{p.name}</p>
-          <p className="text-xs text-stone-400">{p.type.replace(/_/g, ' ')}</p>
+          <p className="text-xs text-stone-400">{p.enrollment ?? '—'}</p>
         </div>
       ),
     },

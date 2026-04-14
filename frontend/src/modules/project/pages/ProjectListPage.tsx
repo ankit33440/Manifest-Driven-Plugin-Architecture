@@ -9,28 +9,18 @@ import PageLoader from '../../../components/PageLoader';
 interface Project {
   id: string;
   name: string;
-  type: string;
+  enrollment: string | null;
   status: string;
-  country: string;
-  region: string;
-  estimatedCredits: number | null;
+  country: string | null;
+  region: string | null;
+  proposedCarbonCredits: number | null;
   createdAt: string;
 }
-
-const TYPE_ACCENT: Record<string, string> = {
-  REFORESTATION: 'bg-emerald-500',
-  SOLAR: 'bg-amber-400',
-  WIND: 'bg-sky-500',
-  METHANE: 'bg-violet-500',
-  REDD_PLUS: 'bg-lime-500',
-  OTHER: 'bg-line-strong',
-};
 
 const ALL_STATUSES = [
   'DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'INFO_REQUESTED',
   'APPROVED', 'REJECTED', 'CERTIFIED', 'ACTIVE',
 ];
-const ALL_TYPES = ['REFORESTATION', 'SOLAR', 'WIND', 'METHANE', 'REDD_PLUS', 'OTHER'];
 
 function ProjectCard({
   project,
@@ -41,10 +31,9 @@ function ProjectCard({
   onClick: () => void;
   onEdit?: () => void;
 }) {
-  const accent = TYPE_ACCENT[project.type] ?? TYPE_ACCENT.OTHER;
   return (
     <div className="surface overflow-hidden hover:shadow-md transition-shadow group">
-      <div className={`h-1.5 w-full ${accent}`} />
+      <div className="h-1.5 w-full bg-accent" />
       <button onClick={onClick} className="w-full text-left p-5">
         <div className="flex items-start justify-between gap-2 mb-2">
           <h3 className="text-sm font-semibold text-ink group-hover:text-accent leading-snug line-clamp-2">
@@ -53,12 +42,12 @@ function ProjectCard({
           <StatusBadge status={project.status} />
         </div>
         <p className="text-xs text-ink-muted mb-3">
-          {project.type.replace(/_/g, ' ')} · {project.country}, {project.region}
+          {project.enrollment ?? '—'} · {project.country}{project.region ? `, ${project.region}` : ''}
         </p>
         <div className="flex items-center justify-between text-xs text-ink-faint pt-3 border-t border-line">
           <span>
-            {project.estimatedCredits
-              ? `${Number(project.estimatedCredits).toLocaleString()} tCO₂`
+            {project.proposedCarbonCredits
+              ? `${Number(project.proposedCarbonCredits).toLocaleString()} tCO₂`
               : '—'}
           </span>
           <span>{new Date(project.createdAt).toLocaleDateString()}</span>
@@ -85,7 +74,6 @@ export default function ProjectListPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
 
   const canCreate = user
     ? getPagesFor(user.role).some((p) => p.path === '/projects/new')
@@ -102,13 +90,8 @@ export default function ProjectListPage() {
   }, []);
 
   const filtered = useMemo(
-    () =>
-      projects.filter(
-        (p) =>
-          (!statusFilter || p.status === statusFilter) &&
-          (!typeFilter || p.type === typeFilter),
-      ),
-    [projects, statusFilter, typeFilter],
+    () => projects.filter((p) => !statusFilter || p.status === statusFilter),
+    [projects, statusFilter],
   );
 
   const stats = useMemo(
@@ -169,24 +152,12 @@ export default function ProjectListPage() {
             </option>
           ))}
         </select>
-        <select
-          className="field text-sm max-w-[160px]"
-          value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value)}
-        >
-          <option value="">All Types</option>
-          {ALL_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {t.replace(/_/g, ' ')}
-            </option>
-          ))}
-        </select>
-        {(statusFilter || typeFilter) && (
+        {statusFilter && (
           <button
-            onClick={() => { setStatusFilter(''); setTypeFilter(''); }}
+            onClick={() => setStatusFilter('')}
             className="text-xs text-ink-muted hover:text-ink transition-colors"
           >
-            Clear filters
+            Clear filter
           </button>
         )}
       </div>

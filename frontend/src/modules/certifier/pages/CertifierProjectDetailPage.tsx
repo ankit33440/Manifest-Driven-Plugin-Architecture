@@ -6,15 +6,17 @@ import PageLoader from '../../../components/PageLoader';
 interface Project {
   id: string;
   name: string;
-  type: string;
   status: string;
-  standard: string;
-  country: string;
-  region: string;
+  enrollment: string | null;
+  protocol: string | null;
+  protocolVersion: string | null;
+  applicationYear: number | null;
+  vintage: number | null;
+  proposedCarbonCredits: number | null;
+  averageAccrualRate: number | null;
+  country: string | null;
+  region: string | null;
   areaHectares: number | null;
-  estimatedCredits: number | null;
-  vintageStartYear: number | null;
-  vintageEndYear: number | null;
   createdAt: string;
 }
 
@@ -138,7 +140,7 @@ export default function CertifierProjectDetailPage() {
           <div>
             <h1 className="text-2xl font-bold mb-1">{project.name}</h1>
             <p className="text-teal-200 text-sm">
-              {project.standard} · {project.id.slice(0, 8).toUpperCase()} · {project.country}
+              {project.protocol ?? project.enrollment ?? '—'} · {project.id.slice(0, 8).toUpperCase()} · {project.country}
             </p>
           </div>
           <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-emerald-100 text-emerald-700">
@@ -152,11 +154,13 @@ export default function CertifierProjectDetailPage() {
         <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-3">Project Details</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
-            ['Type', project.type.replace(/_/g, ' ')],
-            ['Country', project.country],
+            ['Enrollment', project.enrollment ?? '—'],
+            ['Protocol', project.protocol ? `${project.protocol}${project.protocolVersion ? ` v${project.protocolVersion}` : ''}` : '—'],
+            ['Country', project.country ?? '—'],
             ['Area', project.areaHectares ? `${Number(project.areaHectares).toLocaleString()} ha` : '—'],
-            ['Est. Credits', project.estimatedCredits ? `${Number(project.estimatedCredits).toLocaleString()} tCO₂` : '—'],
-            ['Vintage', project.vintageStartYear && project.vintageEndYear ? `${project.vintageStartYear}–${project.vintageEndYear}` : '—'],
+            ['Proposed Credits', project.proposedCarbonCredits ? `${Number(project.proposedCarbonCredits).toLocaleString()} tCO₂` : '—'],
+            ['Vintage', project.vintage ? String(project.vintage) : '—'],
+            ['Application Year', project.applicationYear ? String(project.applicationYear) : '—'],
           ].map(([label, value]) => (
             <div key={label} className="rounded-xl border border-stone-100 bg-stone-50 p-3">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-stone-400 mb-0.5">{label}</p>

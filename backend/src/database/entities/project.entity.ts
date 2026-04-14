@@ -11,15 +11,6 @@ import { User } from './user.entity';
 import { ProjectDocument } from './project-document.entity';
 import { ProjectStatusHistory } from './project-status-history.entity';
 
-export enum ProjectType {
-  REFORESTATION = 'REFORESTATION',
-  SOLAR = 'SOLAR',
-  WIND = 'WIND',
-  METHANE = 'METHANE',
-  REDD_PLUS = 'REDD_PLUS',
-  OTHER = 'OTHER',
-}
-
 export enum ProjectStatus {
   DRAFT = 'DRAFT',
   SUBMITTED = 'SUBMITTED',
@@ -32,39 +23,63 @@ export enum ProjectStatus {
   ACTIVE = 'ACTIVE',
 }
 
-export enum ProjectStandard {
-  VCS = 'VCS',
-  GOLD_STANDARD = 'GOLD_STANDARD',
-  CAR = 'CAR',
-  CDM = 'CDM',
-  OTHER = 'OTHER',
-}
-
 @Entity('projects')
 export class Project {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  // ── UI / user-editable fields ────────────────────────────────────────────────
+
   @Column()
   name: string;
+
+  @Column({ nullable: true })
+  projectProponent: string | null;
+
+  @Column({ type: 'date', nullable: true })
+  startDate: Date | null;
+
+  @Column({ nullable: true })
+  enrollment: string | null;
+
+  @Column({ nullable: true })
+  protocol: string | null;
+
+  @Column({ nullable: true })
+  protocolVersion: string | null;
+
+  @Column({ nullable: true })
+  applicationYear: number | null;
+
+  @Column({ nullable: true })
+  vintage: number | null;
+
+  @Column({ type: 'decimal', precision: 14, scale: 2, nullable: true })
+  proposedCarbonCredits: number | null;
+
+  @Column({ type: 'decimal', precision: 6, scale: 2, nullable: true })
+  averageAccrualRate: number | null;
 
   @Column('text')
   description: string;
 
-  @Column({ type: 'enum', enum: ProjectType })
-  type: ProjectType;
+  // ── Location: user-provided ──────────────────────────────────────────────────
 
-  @Column({ type: 'enum', enum: ProjectStatus, default: ProjectStatus.DRAFT })
-  status: ProjectStatus;
+  /** Raw geocoded address as typed by the user (e.g. "Brazil, Amazonas") */
+  @Column({ nullable: true })
+  geocodedAddress: string | null;
 
-  @Column({ type: 'enum', enum: ProjectStandard })
-  standard: ProjectStandard;
+  /** Set by backend geocoding service; not editable by users */
+  @Column({ default: false })
+  geofenceVerified: boolean;
 
-  @Column()
-  country: string;
+  // ── Location: system-managed (preserved for internal/geospatial logic) ───────
 
-  @Column()
-  region: string;
+  @Column({ nullable: true })
+  country: string | null;
+
+  @Column({ nullable: true })
+  region: string | null;
 
   @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
   latitude: number | null;
@@ -75,14 +90,10 @@ export class Project {
   @Column({ type: 'decimal', precision: 14, scale: 2, nullable: true })
   areaHectares: number | null;
 
-  @Column({ type: 'decimal', precision: 14, scale: 2, nullable: true })
-  estimatedCredits: number | null;
+  // ── Status & workflow ────────────────────────────────────────────────────────
 
-  @Column({ nullable: true })
-  vintageStartYear: number | null;
-
-  @Column({ nullable: true })
-  vintageEndYear: number | null;
+  @Column({ type: 'enum', enum: ProjectStatus, default: ProjectStatus.DRAFT })
+  status: ProjectStatus;
 
   @Column('uuid')
   developerId: string;
@@ -92,6 +103,8 @@ export class Project {
 
   @Column({ nullable: true })
   assignedCertifierId: string | null;
+
+  // ── Relations ────────────────────────────────────────────────────────────────
 
   @ManyToOne(() => User, (u) => u.projects, { eager: false })
   developer: User;

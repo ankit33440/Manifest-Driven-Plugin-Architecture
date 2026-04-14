@@ -3,166 +3,112 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Trash2, ArrowLeft, CheckCircle2, Circle } from 'lucide-react';
+import { Plus, Trash2, ArrowLeft, CheckCircle2, Circle, MapPin } from 'lucide-react';
 import api from '../../../core/api/axios';
 import PageLoader from '../../../components/PageLoader';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const PROJECT_TYPES = [
-  { value: 'REFORESTATION', label: 'Reforestation' },
-  { value: 'SOLAR', label: 'Solar' },
-  { value: 'WIND', label: 'Wind' },
-  { value: 'METHANE', label: 'Methane Capture' },
-  { value: 'REDD_PLUS', label: 'REDD+' },
-  { value: 'OTHER', label: 'Other' },
-];
-
-const STANDARDS = [
-  { value: 'VCS', label: 'VCS (Verra)' },
-  { value: 'GOLD_STANDARD', label: 'Gold Standard' },
-  { value: 'CAR', label: 'CAR' },
-  { value: 'CDM', label: 'CDM' },
-  { value: 'OTHER', label: 'Other' },
-];
-
-const DOC_TYPES = ['PDD', 'Validation Report', 'Methodology', 'Boundary Map', 'Other'];
-
 // ─── Zod schema ────────────────────────────────────────────────────────────────
 
-function optionalNum(min?: number, max?: number, msg?: string) {
+function optionalInt(min?: number, max?: number) {
   return z.string().refine(
-    (val) => {
-      if (!val || val.trim() === '') return true;
-      const n = Number(val);
-      if (isNaN(n)) return false;
-      if (min !== undefined && n < min) return false;
-      if (max !== undefined && n > max) return false;
-      return true;
+    (v) => {
+      if (!v || v.trim() === '') return true;
+      const n = Number(v);
+      return Number.isInteger(n) && (min === undefined || n >= min) && (max === undefined || n <= max);
     },
-    {
-      message:
-        msg ??
-        (min !== undefined && max !== undefined
-          ? `Must be between ${min} and ${max}`
-          : 'Must be a valid number'),
-    },
+    { message: min !== undefined && max !== undefined ? `Must be a whole number between ${min}–${max}` : 'Must be a whole number' },
   );
 }
 
-const schema = z
-  .object({
-    name: z.string().min(3, 'Name must be at least 3 characters'),
-    type: z.string().min(1, 'Project type is required'),
-    standard: z.string().min(1, 'Standard is required'),
-    description: z.string().min(10, 'Description must be at least 10 characters'),
-    country: z.string().min(1, 'Country is required'),
-    region: z.string().min(1, 'Region is required'),
-    latitude: optionalNum(-90, 90, 'Must be between -90 and 90'),
-    longitude: optionalNum(-180, 180, 'Must be between -180 and 180'),
-    areaHectares: optionalNum(0, undefined, 'Must be a positive number'),
-    estimatedCredits: optionalNum(0, undefined, 'Must be a positive number'),
-    vintageStartYear: optionalNum(1900, 2100, 'Enter a valid year (1900–2100)'),
-    vintageEndYear: optionalNum(1900, 2100, 'Enter a valid year (1900–2100)'),
-    documents: z
-      .array(
-        z.object({
-          id: z.string().optional(),
-          name: z.string(),
-          url: z.string(),
-          docType: z.string(),
-        }),
-      )
-      .default([]),
-  })
-  .refine(
-    (d) => {
-      if (d.vintageStartYear && d.vintageEndYear) {
-        return Number(d.vintageEndYear) >= Number(d.vintageStartYear);
-      }
-      return true;
+function optionalDecimal(min?: number) {
+  return z.string().refine(
+    (v) => {
+      if (!v || v.trim() === '') return true;
+      const n = Number(v);
+      return !isNaN(n) && (min === undefined || n >= min);
     },
-    { message: 'End year must be ≥ start year', path: ['vintageEndYear'] },
+    { message: 'Must be a valid number' },
   );
+}
+
+const schema = z.object({
+  name:               z.string().min(3, 'At least 3 characters'),
+  projectProponent:   z.string().optional(),
+  startDate:          z.string().optional(),
+  geocodedAddress:    z.string().min(1, 'Location is required'),
+  enrollment:         z.string().optional(),
+  protocol:           z.string().optional(),
+  protocolVersion:    z.string().optional(),
+  applicationYear:    optionalInt(1900, 2030),
+  vintage:            optionalInt(1900, 2030),
+  proposedCarbonCredits: optionalDecimal(0),
+  averageAccrualRate: optionalDecimal(0),
+  description:        z.string().min(10, 'At least 10 characters'),
+  documents: z.array(
+    z.object({
+      id:      z.string().optional(),
+      name:    z.string(),
+      url:     z.string(),
+      docType: z.string(),
+    }),
+  ),
+});
 
 type FormValues = z.infer<typeof schema>;
 
-const EMPTY_DEFAULTS: FormValues = {
-  name: '',
-  type: '',
-  standard: '',
-  description: '',
-  country: '',
-  region: '',
-  latitude: '',
-  longitude: '',
-  areaHectares: '',
-  estimatedCredits: '',
-  vintageStartYear: '',
-  vintageEndYear: '',
-  documents: [],
+const EMPTY: FormValues = {
+  name: '', projectProponent: '', startDate: '', geocodedAddress: '',
+  enrollment: '', protocol: '', protocolVersion: '',
+  applicationYear: '', vintage: '', proposedCarbonCredits: '', averageAccrualRate: '',
+  description: '', documents: [],
 };
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+const DOC_TYPES = ['PDD', 'Validation Report', 'Methodology', 'Boundary Map', 'Other'];
 
-function FormSection({
-  title,
-  hint,
-  children,
-}: {
-  title: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="surface p-6">
-      <div className="mb-5">
-        <h2 className="text-sm font-semibold text-ink">{title}</h2>
-        {hint && <p className="text-xs text-ink-muted mt-0.5">{hint}</p>}
-      </div>
-      {children}
-    </div>
-  );
-}
+// ─── Field helpers ─────────────────────────────────────────────────────────────
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
   return <p className="text-xs text-alert mt-1">{message}</p>;
 }
 
+function FieldWrapper({
+  label,
+  required,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <label className="field-label">
+        {label}
+        {required && <span className="text-alert ml-0.5">*</span>}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+// ─── Success screen ────────────────────────────────────────────────────────────
+
 function SuccessScreen({ projectId }: { projectId: string }) {
   const navigate = useNavigate();
   return (
     <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-6">
-      <div className="w-16 h-16 rounded-full bg-status-approved-bg flex items-center justify-center mb-5">
-        <CheckCircle2 size={32} className="text-status-approved-text" />
+      <div className="w-14 h-14 rounded-full bg-status-approved-bg flex items-center justify-center mb-5">
+        <CheckCircle2 size={28} className="text-status-approved-text" />
       </div>
-      <h2 className="text-2xl font-bold text-ink mb-2">Project Submitted!</h2>
+      <h2 className="text-2xl font-bold text-ink mb-2">Project Successfully Submitted!</h2>
       <p className="text-sm text-ink-muted max-w-sm mb-8">
-        Your project has been submitted for verification. Verifiers will review your submission and
-        reach out if additional information is needed.
+        Your environmental asset has been recorded in the Living Ledger. We are now entering the
+        verification phase to validate your ecological impact.
       </p>
-
-      <div className="surface p-5 w-full max-w-sm mb-6 text-left">
-        <p className="section-label mb-3">What happens next</p>
-        {[
-          'Verifier assignment (1–2 business days)',
-          'Document review & site assessment',
-          'Verification report issued',
-          'Registry approval & credit issuance',
-        ].map((step, i) => (
-          <div key={step} className="flex gap-3 items-start mb-3 last:mb-0">
-            <span className="w-5 h-5 rounded-full bg-canvas text-ink-muted text-xs flex items-center justify-center flex-shrink-0 mt-0.5 font-semibold">
-              {i + 1}
-            </span>
-            <span className="text-sm text-ink">{step}</span>
-          </div>
-        ))}
-      </div>
-
       <div className="flex gap-3">
         <button onClick={() => navigate(`/projects/${projectId}`)} className="btn-primary">
-          View Project
+          View Submission
         </button>
         <button onClick={() => navigate('/projects')} className="btn-secondary">
           All Projects
@@ -195,13 +141,14 @@ export default function ProjectCreatePage() {
     reset,
     formState: { errors },
   } = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: EMPTY_DEFAULTS,
+    resolver: zodResolver(schema) as any,
+    defaultValues: EMPTY,
   });
 
   const { fields, append, remove } = useFieldArray({ control, name: 'documents' });
 
-  // Load existing project in edit mode
+  // ── Load existing project in edit mode ─────────────────────────────────────
+
   useEffect(() => {
     if (!editId) return;
     api
@@ -209,23 +156,20 @@ export default function ProjectCreatePage() {
       .then((r) => {
         const p = r.data;
         reset({
-          name: p.name ?? '',
-          type: p.type ?? '',
-          standard: p.standard ?? '',
-          description: p.description ?? '',
-          country: p.country === 'TBD' ? '' : (p.country ?? ''),
-          region: p.region === 'TBD' ? '' : (p.region ?? ''),
-          latitude: p.latitude != null ? String(p.latitude) : '',
-          longitude: p.longitude != null ? String(p.longitude) : '',
-          areaHectares: p.areaHectares != null ? String(p.areaHectares) : '',
-          estimatedCredits: p.estimatedCredits != null ? String(p.estimatedCredits) : '',
-          vintageStartYear: p.vintageStartYear != null ? String(p.vintageStartYear) : '',
-          vintageEndYear: p.vintageEndYear != null ? String(p.vintageEndYear) : '',
+          name:               p.name ?? '',
+          projectProponent:   p.projectProponent ?? '',
+          startDate:          p.startDate ? p.startDate.slice(0, 10) : '',
+          geocodedAddress:    p.geocodedAddress ?? '',
+          enrollment:         p.enrollment ?? '',
+          protocol:           p.protocol ?? '',
+          protocolVersion:    p.protocolVersion ?? '',
+          applicationYear:    p.applicationYear != null ? String(p.applicationYear) : '',
+          vintage:            p.vintage != null ? String(p.vintage) : '',
+          proposedCarbonCredits: p.proposedCarbonCredits != null ? String(p.proposedCarbonCredits) : '',
+          averageAccrualRate: p.averageAccrualRate != null ? String(p.averageAccrualRate) : '',
+          description:        p.description ?? '',
           documents: (p.documents ?? []).map((d: any) => ({
-            id: d.id,
-            name: d.name,
-            url: d.url,
-            docType: d.type ?? 'Other',
+            id: d.id, name: d.name, url: d.url, docType: d.type ?? 'Other',
           })),
         });
       })
@@ -237,24 +181,24 @@ export default function ProjectCreatePage() {
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
-  function numOrUndef(v: string) {
-    return v !== '' ? Number(v) : undefined;
+  function numOrUndef(v: string | undefined) {
+    return v && v.trim() !== '' ? Number(v) : undefined;
   }
 
   async function persistProject(values: FormValues, pid: string | null): Promise<string> {
     const body = {
-      name: values.name,
-      type: values.type,
-      standard: values.standard,
-      description: values.description,
-      country: values.country || 'TBD',
-      region: values.region || 'TBD',
-      latitude: numOrUndef(values.latitude ?? ''),
-      longitude: numOrUndef(values.longitude ?? ''),
-      areaHectares: numOrUndef(values.areaHectares ?? ''),
-      estimatedCredits: numOrUndef(values.estimatedCredits ?? ''),
-      vintageStartYear: numOrUndef(values.vintageStartYear ?? ''),
-      vintageEndYear: numOrUndef(values.vintageEndYear ?? ''),
+      name:               values.name,
+      description:        values.description,
+      projectProponent:   values.projectProponent || undefined,
+      startDate:          values.startDate || undefined,
+      geocodedAddress:    values.geocodedAddress,
+      enrollment:         values.enrollment || undefined,
+      protocol:           values.protocol || undefined,
+      protocolVersion:    values.protocolVersion || undefined,
+      applicationYear:    numOrUndef(values.applicationYear),
+      vintage:            numOrUndef(values.vintage),
+      proposedCarbonCredits: numOrUndef(values.proposedCarbonCredits),
+      averageAccrualRate: numOrUndef(values.averageAccrualRate),
     };
 
     let id = pid;
@@ -266,25 +210,19 @@ export default function ProjectCreatePage() {
       setProjectId(id);
     }
 
-    // POST only new documents (those without an id)
     const newDocs = values.documents.filter((d) => !d.id && d.name && d.url);
     for (const doc of newDocs) {
-      await api.post(`/projects/${id}/documents`, {
-        name: doc.name,
-        url: doc.url,
-        type: doc.docType,
-      });
+      await api.post(`/projects/${id}/documents`, { name: doc.name, url: doc.url, type: doc.docType });
     }
 
     return id!;
   }
 
   async function handleSaveDraft() {
-    const values = getValues();
     setApiError('');
     setSaving(true);
     try {
-      await persistProject(values, projectId);
+      await persistProject(getValues(), projectId);
       navigate('/projects');
     } catch (err: any) {
       const msg = err.response?.data?.message;
@@ -309,38 +247,23 @@ export default function ProjectCreatePage() {
     }
   };
 
-  // ── Readiness (watched values) ─────────────────────────────────────────────
-  const [wName, wType, wStandard, wDescription, wCountry, wRegion] = watch([
-    'name',
-    'type',
-    'standard',
-    'description',
-    'country',
-    'region',
-  ]);
+  // ── Readiness ──────────────────────────────────────────────────────────────
 
-  const basicDone =
-    (wName?.length ?? 0) >= 3 && !!wType && !!wStandard && (wDescription?.length ?? 0) >= 10;
-  const locationDone = !!wCountry && !!wRegion;
-
-  const readinessItems = [
-    { label: 'Basic Information', done: basicDone },
-    { label: 'Location Details', done: locationDone },
-    { label: 'Credit Estimation', done: true, optional: true },
-    { label: 'Documents', done: true, optional: true },
-  ];
-  const requiredDone = [basicDone, locationDone].filter(Boolean).length;
-  const pct = Math.round((requiredDone / 2) * 100);
+  const [wName, wGeo, wDesc, wDocs] = watch(['name', 'geocodedAddress', 'description', 'documents']);
+  const basicDone = (wName?.length ?? 0) >= 3 && (wDesc?.length ?? 0) >= 10;
+  const geoBoundaryDone = (wGeo?.length ?? 0) > 0;
+  const docsDone = (wDocs?.length ?? 0) > 0;
+  const pct = Math.round(([basicDone, geoBoundaryDone].filter(Boolean).length / 2) * 100);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
   if (isSubmitted && projectId) {
-    return (
-      <div className="page-container">
-        <SuccessScreen projectId={projectId} />
-      </div>
-    );
+    return <div className="page-container"><SuccessScreen projectId={projectId} /></div>;
   }
+
+  const err = (field: keyof typeof errors) => errors[field]?.message as string | undefined;
+  const cls = (field: keyof typeof errors) =>
+    `field mt-1 ${errors[field] ? 'border-alert focus:ring-alert/20' : ''}`;
 
   return (
     <div className="page-container">
@@ -353,245 +276,143 @@ export default function ProjectCreatePage() {
           <ArrowLeft size={15} />
           {isEditMode ? 'Back to Project' : 'Cancel'}
         </button>
-        <h1 className="page-title">
-          {isEditMode ? 'Edit Draft Project' : 'Register New Project'}
-        </h1>
-        <p className="text-sm text-ink-muted mt-1">
-          {isEditMode
-            ? 'Update your draft and submit for verification when ready.'
-            : 'Fill in the details below. Save as draft at any time, or submit when ready.'}
-        </p>
+        <h1 className="page-title">{isEditMode ? 'Edit Project' : 'Register New Project'}</h1>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* ── Left: form sections ── */}
+
+          {/* ── LEFT: form ── */}
           <div className="lg:col-span-2 space-y-5">
 
-            {/* Section 1: Basic Information */}
-            <FormSection title="Basic Information">
-              <div className="space-y-4">
-                <div>
-                  <label className="field-label">Project Name *</label>
-                  <input
-                    {...register('name')}
-                    className={`field mt-1 ${errors.name ? 'border-alert focus:ring-alert/20' : ''}`}
-                    placeholder="e.g. Amazon Basin Reforestation Initiative"
-                  />
-                  <FieldError message={errors.name?.message} />
-                </div>
+            {/* Project Information */}
+            <div className="surface p-6 space-y-4">
+              <h2 className="text-sm font-semibold text-ink mb-1">Project Information</h2>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="field-label">Project Type *</label>
-                    <select
-                      {...register('type')}
-                      className={`field mt-1 ${errors.type ? 'border-alert focus:ring-alert/20' : ''}`}
-                    >
-                      <option value="">Select type…</option>
-                      {PROJECT_TYPES.map((t) => (
-                        <option key={t.value} value={t.value}>
-                          {t.label}
-                        </option>
-                      ))}
-                    </select>
-                    <FieldError message={errors.type?.message} />
-                  </div>
-
-                  <div>
-                    <label className="field-label">Standard *</label>
-                    <select
-                      {...register('standard')}
-                      className={`field mt-1 ${errors.standard ? 'border-alert focus:ring-alert/20' : ''}`}
-                    >
-                      <option value="">Select standard…</option>
-                      {STANDARDS.map((s) => (
-                        <option key={s.value} value={s.value}>
-                          {s.label}
-                        </option>
-                      ))}
-                    </select>
-                    <FieldError message={errors.standard?.message} />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="field-label">Description *</label>
-                  <textarea
-                    {...register('description')}
-                    className={`field mt-1 resize-none ${errors.description ? 'border-alert focus:ring-alert/20' : ''}`}
-                    rows={5}
-                    placeholder="Describe the project, its goals, methodology, and expected environmental impact…"
-                  />
-                  <FieldError message={errors.description?.message} />
-                </div>
+              {/* Row: name + proponent */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FieldWrapper label="Project Name" required>
+                  <input {...register('name')} className={cls('name')} placeholder="Amazon Basin Reforestation – Sector 4" />
+                  <FieldError message={err('name')} />
+                </FieldWrapper>
+                <FieldWrapper label="Project Proponent">
+                  <input {...register('projectProponent')} className="field mt-1" placeholder="Institutional Developer Name" />
+                </FieldWrapper>
               </div>
-            </FormSection>
 
-            {/* Section 2: Location */}
-            <FormSection
-              title="Location"
-              hint="Coordinates define the project centroid. A full boundary can be uploaded in documents."
-            >
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="field-label">Country *</label>
+              {/* Row: start date + location */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FieldWrapper label="Project Start Date">
+                  <input {...register('startDate')} type="date" className="field mt-1" />
+                </FieldWrapper>
+                <FieldWrapper label="Location" required>
+                  <div className="relative mt-1">
                     <input
-                      {...register('country')}
-                      className={`field mt-1 ${errors.country ? 'border-alert focus:ring-alert/20' : ''}`}
-                      placeholder="e.g. Brazil"
+                      {...register('geocodedAddress')}
+                      className={`field pr-8 ${errors.geocodedAddress ? 'border-alert focus:ring-alert/20' : ''}`}
+                      placeholder="Brazil, Amazonas"
                     />
-                    <FieldError message={errors.country?.message} />
+                    <MapPin size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-faint pointer-events-none" />
                   </div>
-                  <div>
-                    <label className="field-label">Region *</label>
-                    <input
-                      {...register('region')}
-                      className={`field mt-1 ${errors.region ? 'border-alert focus:ring-alert/20' : ''}`}
-                      placeholder="e.g. Amazon Basin"
-                    />
-                    <FieldError message={errors.region?.message} />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="field-label">Latitude</label>
-                    <input
-                      {...register('latitude')}
-                      type="number"
-                      step="any"
-                      className={`field mt-1 ${errors.latitude ? 'border-alert focus:ring-alert/20' : ''}`}
-                      placeholder="-3.4653"
-                    />
-                    <FieldError message={errors.latitude?.message} />
-                  </div>
-                  <div>
-                    <label className="field-label">Longitude</label>
-                    <input
-                      {...register('longitude')}
-                      type="number"
-                      step="any"
-                      className={`field mt-1 ${errors.longitude ? 'border-alert focus:ring-alert/20' : ''}`}
-                      placeholder="-62.2159"
-                    />
-                    <FieldError message={errors.longitude?.message} />
-                  </div>
-                </div>
+                  <FieldError message={err('geocodedAddress')} />
+                </FieldWrapper>
               </div>
-            </FormSection>
 
-            {/* Section 3: Credit Estimation */}
-            <FormSection title="Credit Estimation" hint="All fields in this section are optional.">
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="field-label">Area (Hectares)</label>
-                    <input
-                      {...register('areaHectares')}
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      className={`field mt-1 ${errors.areaHectares ? 'border-alert focus:ring-alert/20' : ''}`}
-                      placeholder="50000"
-                    />
-                    <FieldError message={errors.areaHectares?.message} />
-                  </div>
-                  <div>
-                    <label className="field-label">Estimated Credits (tCO₂)</label>
-                    <input
-                      {...register('estimatedCredits')}
-                      type="number"
-                      min="0"
-                      step="1"
-                      className={`field mt-1 ${errors.estimatedCredits ? 'border-alert focus:ring-alert/20' : ''}`}
-                      placeholder="120000"
-                    />
-                    <FieldError message={errors.estimatedCredits?.message} />
-                  </div>
-                </div>
+              {/* Row: enrollment */}
+              <FieldWrapper label="Enrollment">
+                <input {...register('enrollment')} className="field mt-1" placeholder="Standard Registry" />
+              </FieldWrapper>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="field-label">Vintage Start Year</label>
-                    <input
-                      {...register('vintageStartYear')}
-                      type="number"
-                      className={`field mt-1 ${errors.vintageStartYear ? 'border-alert focus:ring-alert/20' : ''}`}
-                      placeholder="2024"
-                    />
-                    <FieldError message={errors.vintageStartYear?.message} />
-                  </div>
-                  <div>
-                    <label className="field-label">Vintage End Year</label>
-                    <input
-                      {...register('vintageEndYear')}
-                      type="number"
-                      className={`field mt-1 ${errors.vintageEndYear ? 'border-alert focus:ring-alert/20' : ''}`}
-                      placeholder="2034"
-                    />
-                    <FieldError message={errors.vintageEndYear?.message} />
-                  </div>
-                </div>
+              {/* Row: protocol + version */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FieldWrapper label="Protocol">
+                  <input {...register('protocol')} className="field mt-1" placeholder="VM0047" />
+                </FieldWrapper>
+                <FieldWrapper label="Protocol Version">
+                  <input {...register('protocolVersion')} className="field mt-1" placeholder="V1.2" />
+                </FieldWrapper>
               </div>
-            </FormSection>
 
-            {/* Section 4: Documents */}
-            <FormSection
-              title="Supporting Documents"
-              hint="A Project Design Document (PDD) is required for verification."
-            >
-              <div className="space-y-3">
-                {fields.length === 0 && (
-                  <p className="text-sm text-ink-faint py-2">No documents added yet.</p>
-                )}
+              {/* Row: application year + vintage */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FieldWrapper label="Application Year">
+                  <input {...register('applicationYear')} type="number" className={cls('applicationYear')} placeholder="2024" />
+                  <FieldError message={err('applicationYear')} />
+                </FieldWrapper>
+                <FieldWrapper label="Vintage">
+                  <input {...register('vintage')} type="number" className={cls('vintage')} placeholder="2024" />
+                  <FieldError message={err('vintage')} />
+                </FieldWrapper>
+              </div>
 
+              {/* Row: proposed credits + accrual rate */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FieldWrapper label="Proposed Carbon Credits (tCO₂)">
+                  <input {...register('proposedCarbonCredits')} type="number" min="0" className={cls('proposedCarbonCredits')} placeholder="43,000" />
+                  <FieldError message={err('proposedCarbonCredits')} />
+                </FieldWrapper>
+                <FieldWrapper label="Average Accrual Rate (yr)">
+                  <input {...register('averageAccrualRate')} type="number" min="0" step="0.01" className={cls('averageAccrualRate')} placeholder="2" />
+                  <FieldError message={err('averageAccrualRate')} />
+                </FieldWrapper>
+              </div>
+
+              {/* Description */}
+              <FieldWrapper label="Project Description" required>
+                <textarea
+                  {...register('description')}
+                  className={`field mt-1 resize-none ${errors.description ? 'border-alert focus:ring-alert/20' : ''}`}
+                  rows={5}
+                  placeholder="Comprehensive restoration project covering degraded pasture land in the Amazon Basin…"
+                />
+                <FieldError message={err('description')} />
+              </FieldWrapper>
+            </div>
+
+            {/* Document Repository */}
+            <div className="surface p-6">
+              <h2 className="text-sm font-semibold text-ink mb-1">Document Repository</h2>
+              <p className="text-xs text-ink-muted mb-4">
+                A Project Design Document (PDD) is required for verification.
+              </p>
+
+              {fields.length === 0 && (
+                <div className="rounded-lg border-2 border-dashed border-line flex flex-col items-center justify-center py-10 text-center mb-4">
+                  <p className="text-sm text-ink-muted">Drag and drop documents here</p>
+                  <p className="text-xs text-ink-faint mt-1">PDF, XLSX, or DAT files up to 50MB each</p>
+                </div>
+              )}
+
+              <div className="space-y-2.5 mb-4">
                 {fields.map((field, i) => (
-                  <div key={field.id} className="flex gap-2 items-start">
+                  <div key={field.id} className="flex gap-2 items-center">
                     <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      <input
-                        {...register(`documents.${i}.name`)}
-                        className="field text-sm"
-                        placeholder="Document name"
-                      />
-                      <input
-                        {...register(`documents.${i}.url`)}
-                        className="field text-sm"
-                        placeholder="https://…"
-                      />
-                      <select
-                        {...register(`documents.${i}.docType`)}
-                        className="field text-sm"
-                      >
-                        {DOC_TYPES.map((t) => (
-                          <option key={t} value={t}>
-                            {t}
-                          </option>
-                        ))}
+                      <input {...register(`documents.${i}.name`)} className="field text-sm" placeholder="Document name" />
+                      <input {...register(`documents.${i}.url`)} className="field text-sm" placeholder="https://…" />
+                      <select {...register(`documents.${i}.docType`)} className="field text-sm">
+                        {DOC_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                       </select>
                     </div>
                     <button
                       type="button"
                       onClick={() => remove(i)}
-                      className="mt-2.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-ink-faint hover:bg-canvas hover:text-alert transition-colors"
-                      aria-label="Remove document"
+                      className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md text-ink-faint hover:bg-canvas hover:text-alert transition-colors"
                     >
                       <Trash2 size={14} />
                     </button>
                   </div>
                 ))}
-
-                <button
-                  type="button"
-                  onClick={() => append({ name: '', url: '', docType: 'PDD' })}
-                  className="btn-secondary text-sm inline-flex items-center gap-1.5 mt-1"
-                >
-                  <Plus size={14} />
-                  Add Document
-                </button>
               </div>
-            </FormSection>
+
+              <button
+                type="button"
+                onClick={() => append({ name: '', url: '', docType: 'PDD' })}
+                className="btn-secondary text-sm inline-flex items-center gap-1.5"
+              >
+                <Plus size={14} />
+                Add Document
+              </button>
+            </div>
 
             {/* API error */}
             {apiError && (
@@ -601,64 +422,59 @@ export default function ProjectCreatePage() {
             )}
           </div>
 
-          {/* ── Right: readiness sidebar ── */}
+          {/* ── RIGHT: readiness sidebar ── */}
           <div className="lg:col-span-1">
-            <div className="surface p-5 sticky top-6 space-y-5">
-              <div>
-                <h3 className="text-sm font-semibold text-ink">Submission Readiness</h3>
-                <p className="text-xs text-ink-muted mt-0.5">{pct}% required fields complete</p>
-              </div>
-
-              {/* Progress bar */}
-              <div className="h-1.5 bg-canvas rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-accent rounded-full transition-all duration-500"
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
+            <div className="surface p-5 sticky top-6 space-y-4">
+              <h3 className="text-sm font-semibold text-ink">Submission Readiness</h3>
 
               {/* Checklist */}
-              <ul className="space-y-2.5">
-                {readinessItems.map((item) => (
-                  <li key={item.label} className="flex items-center gap-2.5">
+              <ul className="space-y-3">
+                {[
+                  { label: 'Basic Information', sublabel: 'All required fields completed', done: basicDone },
+                  { label: 'Geospatial Boundary', sublabel: 'Coordinates validated against registry', done: geoBoundaryDone },
+                  { label: 'Required Documents', sublabel: `${fields.length} file${fields.length !== 1 ? 's' : ''} uploaded`, done: docsDone, optional: true },
+                ].map((item) => (
+                  <li key={item.label} className="flex items-start gap-2.5">
                     {item.done ? (
-                      <CheckCircle2 size={16} className="text-status-approved-text flex-shrink-0" />
+                      <CheckCircle2 size={16} className="text-status-approved-text flex-shrink-0 mt-0.5" />
                     ) : (
-                      <Circle size={16} className="text-line-strong flex-shrink-0" />
+                      <Circle size={16} className="text-line-strong flex-shrink-0 mt-0.5" />
                     )}
-                    <span className={`text-sm ${item.done ? 'text-ink' : 'text-ink-muted'}`}>
-                      {item.label}
-                      {item.optional && (
-                        <span className="text-xs text-ink-faint ml-1">(optional)</span>
-                      )}
-                    </span>
+                    <div>
+                      <p className={`text-sm font-medium ${item.done ? 'text-ink' : 'text-ink-muted'}`}>
+                        {item.label}
+                        {item.optional && <span className="text-xs text-ink-faint font-normal ml-1">(optional)</span>}
+                      </p>
+                      <p className="text-xs text-ink-faint">{item.sublabel}</p>
+                    </div>
                   </li>
                 ))}
               </ul>
 
-              <div className="space-y-2.5 pt-1">
-                <button
-                  type="submit"
-                  disabled={submitting || saving}
-                  className="btn-primary w-full"
-                >
+              {/* Progress bar */}
+              <div className="h-1 bg-canvas rounded-full overflow-hidden">
+                <div className="h-full bg-accent rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+              </div>
+
+              {/* Actions */}
+              <div className="space-y-2 pt-1">
+                <button type="submit" disabled={submitting || saving} className="btn-primary w-full">
                   {submitting ? 'Submitting…' : 'Submit for Verification'}
+                </button>
+                <button type="button" onClick={handleSaveDraft} disabled={saving || submitting} className="btn-secondary w-full">
+                  {saving ? 'Saving…' : 'Save Draft & Exit'}
                 </button>
                 <button
                   type="button"
-                  onClick={handleSaveDraft}
-                  disabled={saving || submitting}
-                  className="btn-secondary w-full"
+                  onClick={() => navigate(editId ? `/projects/${editId}` : '/projects')}
+                  className="w-full text-sm font-medium text-alert hover:underline transition-colors py-1"
                 >
-                  {saving ? 'Saving…' : 'Save as Draft'}
+                  Discard Submission
                 </button>
               </div>
-
-              <p className="text-xs text-ink-faint">
-                Draft saves your progress without validation. Submit triggers a full review.
-              </p>
             </div>
           </div>
+
         </div>
       </form>
     </div>

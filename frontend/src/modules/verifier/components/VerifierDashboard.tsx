@@ -9,9 +9,9 @@ import ReviewChecklist from './ReviewChecklist';
 interface Project {
   id: string;
   name: string;
-  type: string;
+  enrollment: string | null;
   status: string;
-  country: string;
+  country: string | null;
   createdAt: string;
 }
 
@@ -187,7 +187,7 @@ export default function VerifierDashboard() {
                   <div>
                     <p className="text-sm font-medium text-slate-900 truncate max-w-[200px]">{p.name}</p>
                     <p className="text-xs text-stone-400">
-                      {p.type.replace(/_/g, ' ')} · {p.country}
+                      {p.enrollment ?? '—'} · {p.country}
                     </p>
                   </div>
                   <button

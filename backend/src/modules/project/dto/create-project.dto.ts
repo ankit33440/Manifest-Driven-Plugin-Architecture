@@ -1,17 +1,17 @@
 import {
-  IsEnum,
+  IsDateString,
   IsInt,
   IsNumber,
   IsOptional,
   IsString,
+  Min,
   MinLength,
+  Max,
 } from 'class-validator';
-import {
-  ProjectStandard,
-  ProjectType,
-} from '../../../database/entities/project.entity';
 
 export class CreateProjectDto {
+  // ── Required ──────────────────────────────────────────────────────────────────
+
   @IsString()
   @MinLength(3)
   name: string;
@@ -20,17 +20,67 @@ export class CreateProjectDto {
   @MinLength(10)
   description: string;
 
-  @IsEnum(ProjectType)
-  type: ProjectType;
+  // ── Optional UI fields ────────────────────────────────────────────────────────
 
-  @IsEnum(ProjectStandard)
-  standard: ProjectStandard;
-
+  @IsOptional()
   @IsString()
-  country: string;
+  projectProponent?: string;
 
+  @IsOptional()
+  @IsDateString()
+  startDate?: string;
+
+  @IsOptional()
   @IsString()
-  region: string;
+  enrollment?: string;
+
+  @IsOptional()
+  @IsString()
+  protocol?: string;
+
+  @IsOptional()
+  @IsString()
+  protocolVersion?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1900)
+  @Max(2100)
+  applicationYear?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1900)
+  @Max(2030)
+  vintage?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  proposedCarbonCredits?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  averageAccrualRate?: number;
+
+  // ── Location: user-provided ───────────────────────────────────────────────────
+
+  @IsOptional()
+  @IsString()
+  geocodedAddress?: string;
+
+  // ── Internal / system-managed (accepted on create but not user-exposed) ───────
+  // These are preserved for geospatial/backend logic but must not be listed
+  // as required form fields. They are populated by geocoding or admin services.
+
+  @IsOptional()
+  @IsString()
+  country?: string;
+
+  @IsOptional()
+  @IsString()
+  region?: string;
 
   @IsOptional()
   @IsNumber()
@@ -42,17 +92,6 @@ export class CreateProjectDto {
 
   @IsOptional()
   @IsNumber()
+  @Min(0)
   areaHectares?: number;
-
-  @IsOptional()
-  @IsNumber()
-  estimatedCredits?: number;
-
-  @IsOptional()
-  @IsInt()
-  vintageStartYear?: number;
-
-  @IsOptional()
-  @IsInt()
-  vintageEndYear?: number;
 }
