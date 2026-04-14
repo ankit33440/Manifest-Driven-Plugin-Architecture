@@ -1,53 +1,52 @@
 import React, { useState } from 'react';
-import { Menu, X } from 'lucide-react';
+import { X } from 'lucide-react';
+import { useAuth } from '../core/auth/AuthContext';
 import Sidebar from './Sidebar';
+import Header from './Header';
 import AppRouter from './AppRouter';
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { user } = useAuth();
+
+  if (!user) return null;
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
-      {/* Desktop sidebar */}
-      <div className="hidden md:flex flex-shrink-0">
+    <div className="flex h-screen bg-canvas overflow-hidden">
+      {/* ── Desktop sidebar ── */}
+      <div className="hidden lg:flex flex-shrink-0">
         <Sidebar />
       </div>
 
-      {/* Mobile sidebar overlay */}
+      {/* ── Mobile sidebar drawer ── */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-40 flex md:hidden">
-          <div
-            className="fixed inset-0 bg-gray-600 bg-opacity-75"
+        <div className="fixed inset-0 z-50 flex lg:hidden">
+          {/* Overlay */}
+          <button
+            type="button"
+            aria-label="Close sidebar"
+            className="absolute inset-0 bg-sidebar-bg/60 backdrop-blur-sm"
             onClick={() => setSidebarOpen(false)}
           />
-          <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white z-50">
-            <div className="absolute top-0 right-0 -mr-12 pt-2">
-              <button
-                onClick={() => setSidebarOpen(false)}
-                className="ml-1 flex items-center justify-center h-10 w-10 rounded-full bg-white/20"
-              >
-                <X size={20} className="text-white" />
-              </button>
-            </div>
+          {/* Panel */}
+          <div className="relative z-10 flex h-full">
             <Sidebar onClose={() => setSidebarOpen(false)} />
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(false)}
+              className="absolute right-0 top-3 translate-x-full ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-white"
+              aria-label="Close navigation"
+            >
+              <X size={16} />
+            </button>
           </div>
         </div>
       )}
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Mobile top bar */}
-        <div className="md:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-200">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            <Menu size={24} />
-          </button>
-          <span className="font-semibold text-gray-800">🌿 Nature's Registry</span>
-        </div>
+      {/* ── Main content ── */}
+      <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
+        <Header onOpenSidebar={() => setSidebarOpen(true)} />
 
-        {/* Page content */}
         <main className="flex-1 overflow-y-auto">
           <AppRouter />
         </main>

@@ -1,5 +1,5 @@
 import { componentRegistry } from '../../core/component-registry';
-import ProjectDeveloperDashboard from './components/ProjectDeveloperDashboard';
+import ProjectDeveloperDashboardV2 from './components/ProjectDeveloperDashboardV2';
 import ProjectStatsWidget from './components/ProjectStatsWidget';
 import ProjectCreatePage from './pages/ProjectCreatePage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
@@ -10,5 +10,5 @@ export default function register() {
   componentRegistry.register('ProjectWizardPage', ProjectCreatePage);
   componentRegistry.register('ProjectDetailPage', ProjectDetailPage);
   componentRegistry.register('ProjectStatsWidget', ProjectStatsWidget);
-  componentRegistry.register('ProjectDeveloperDashboard', ProjectDeveloperDashboard);
+  componentRegistry.register('ProjectDeveloperDashboard', ProjectDeveloperDashboardV2);
 }

@@ -1,18 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { NavLink } from 'react-router-dom';
 import * as LucideIcons from 'lucide-react';
 import { useAuth } from '../core/auth/AuthContext';
 import { getNavFor } from '../core/plugin-loader';
 
-const ROLE_COLORS: Record<string, string> = {
-  SUPERADMIN: 'bg-red-100 text-red-700',
-  PROJECT_DEVELOPER: 'bg-blue-100 text-blue-700',
-  VERIFIER: 'bg-purple-100 text-purple-700',
-  CERTIFIER: 'bg-amber-100 text-amber-700',
-  BUYER: 'bg-green-100 text-green-700',
-};
-
-function getIcon(name: string): React.ComponentType<{ size?: number; className?: string }> {
+function getIcon(name: string): React.ComponentType<any> {
   const icon = (LucideIcons as Record<string, any>)[name];
   return icon ?? LucideIcons.Circle;
 }
@@ -21,45 +13,56 @@ interface SidebarProps {
   onClose?: () => void;
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  SUPERADMIN: 'Super Admin',
+  PROJECT_DEVELOPER: 'Project Developer',
+  VERIFIER: 'Verifier',
+  CERTIFIER: 'Certifier',
+  BUYER: 'Buyer',
+};
+
 export default function Sidebar({ onClose }: SidebarProps) {
   const { user, logout } = useAuth();
 
   if (!user) return null;
 
-  // Dashboard is a core nav item (not from any plugin)
   const DashboardIcon = getIcon('LayoutDashboard');
   const pluginNav = getNavFor(user.role);
-
-  const roleColor = ROLE_COLORS[user.role] || 'bg-gray-100 text-gray-700';
-  const roleLabel = user.role.replace(/_/g, ' ');
+  const roleLabel = ROLE_LABELS[user.role] ?? user.role.replace(/_/g, ' ');
+  const initials = user.name
+    .split(' ')
+    .map((p) => p[0]?.toUpperCase() ?? '')
+    .slice(0, 2)
+    .join('');
 
   return (
-    <aside className="flex flex-col h-full bg-white border-r border-gray-200 w-64">
-      {/* Logo */}
-      <div className="flex items-center gap-2 px-6 py-5 border-b border-gray-100">
-        <span className="text-2xl">🌿</span>
-        <div>
-          <div className="font-bold text-gray-900 text-sm leading-tight">Nature's Registry</div>
-          <div className="text-xs text-gray-500">Carbon Credit Platform</div>
+    <aside className="flex h-full w-sidebar flex-col bg-sidebar-bg">
+      {/* Brand */}
+      <div className="flex items-center gap-3 border-b border-sidebar-border px-5 py-[14px]">
+        {/* Logo mark */}
+        <div className="relative h-10 w-10 flex-shrink-0 overflow-hidden rounded-sm bg-sidebar-bg-active">
+          <div className="absolute left-0 top-0 h-5 w-5 bg-brand-lime" />
+          <div className="absolute right-0 top-0 h-5 w-5 bg-brand-lime [clip-path:polygon(0_0,100%_0,100%_100%)]" />
+          <div className="absolute bottom-0 left-0 h-5 w-5 bg-brand-teal [clip-path:polygon(0_0,100%_100%,0_100%)]" />
+        </div>
+        <div className="leading-none text-sidebar-text">
+          <div className="text-[18px] font-extrabold tracking-[-0.03em]">Nature's</div>
+          <div className="text-[18px] font-extrabold tracking-[-0.03em]">Registry</div>
         </div>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-        {/* Dashboard — always visible, from core */}
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+        {/* Dashboard */}
         <NavLink
           to="/dashboard"
           onClick={onClose}
           className={({ isActive }) =>
-            `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              isActive
-                ? 'bg-green-50 text-green-700'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-            }`
+            isActive ? 'nav-item-active' : 'nav-item-default'
           }
         >
-          <DashboardIcon size={18} />
-          Dashboard
+          <DashboardIcon size={17} strokeWidth={2} />
+          <span>Dashboard</span>
         </NavLink>
 
         {/* Plugin nav items */}
@@ -71,41 +74,51 @@ export default function Sidebar({ onClose }: SidebarProps) {
               to={item.path}
               onClick={onClose}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-green-50 text-green-700'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                }`
+                isActive ? 'nav-item-active' : 'nav-item-default'
               }
             >
-              <Icon size={18} />
-              {item.label}
+              <Icon size={17} strokeWidth={2} />
+              <span>{item.label}</span>
             </NavLink>
           );
         })}
+
+        {/* Settings always at bottom of nav */}
+        <NavLink
+          to="/settings"
+          onClick={onClose}
+          className={({ isActive }) =>
+            isActive ? 'nav-item-active' : 'nav-item-default'
+          }
+        >
+          <LucideIcons.Settings size={17} strokeWidth={2} />
+          <span>Settings</span>
+        </NavLink>
       </nav>
 
-      {/* User info */}
-      <div className="border-t border-gray-100 px-4 py-4">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center text-white text-sm font-bold">
-            {user.name.charAt(0).toUpperCase()}
+      {/* User footer */}
+      <div className="border-t border-sidebar-border px-4 py-4">
+        <div className="flex items-center gap-3">
+          {/* Avatar */}
+          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border-2 border-brand-lime/60 bg-[#e7d18e] text-[12px] font-bold text-sidebar-bg">
+            {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium text-gray-900 truncate">{user.name}</div>
-            <div className="text-xs text-gray-500 truncate">{user.email}</div>
+            <p className="text-sm font-semibold text-sidebar-text truncate leading-tight">
+              {user.name}
+            </p>
+            <p className="text-xs text-sidebar-text-muted truncate leading-tight mt-0.5">
+              {roleLabel}
+            </p>
           </div>
+          <button
+            onClick={logout}
+            title="Sign out"
+            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md text-sidebar-text-muted transition-colors hover:bg-sidebar-bg-hover hover:text-sidebar-text"
+          >
+            <LucideIcons.LogOut size={15} />
+          </button>
         </div>
-        <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${roleColor} mb-3`}>
-          {roleLabel}
-        </span>
-        <button
-          onClick={logout}
-          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors"
-        >
-          <LucideIcons.LogOut size={16} />
-          Sign out
-        </button>
       </div>
     </aside>
   );

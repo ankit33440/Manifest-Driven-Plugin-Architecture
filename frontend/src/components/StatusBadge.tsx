@@ -1,20 +1,23 @@
 import React from 'react';
 
-const STATUS_STYLES: Record<string, string> = {
+const STATUS_CLASSES: Record<string, string> = {
   // Project statuses
-  DRAFT: 'bg-gray-100 text-gray-600',
-  SUBMITTED: 'bg-blue-100 text-blue-700',
-  UNDER_REVIEW: 'bg-amber-100 text-amber-700',
-  APPROVED: 'bg-green-100 text-green-700',
-  REJECTED: 'bg-red-100 text-red-700',
-  // Credit statuses
-  ACTIVE: 'bg-green-100 text-green-700',
-  RETIRED: 'bg-gray-100 text-gray-600',
-  PENDING: 'bg-amber-100 text-amber-700',
-  // Marketplace statuses
-  AVAILABLE: 'bg-green-100 text-green-700',
-  SOLD: 'bg-gray-100 text-gray-600',
-  CANCELLED: 'bg-red-100 text-red-700',
+  DRAFT:          'badge-draft',
+  SUBMITTED:      'badge-submitted',
+  UNDER_REVIEW:   'badge-reviewing',
+  INFO_REQUESTED: 'badge-pending',
+  APPROVED:       'badge-approved',
+  REJECTED:       'badge-rejected',
+  CERTIFIED:      'badge-approved',
+  // User statuses
+  ACTIVE:         'badge-approved',
+  SUSPENDED:      'badge-rejected',
+  PENDING:        'badge-pending',
+  // Credit / marketplace statuses
+  RETIRED:        'badge-draft',
+  AVAILABLE:      'badge-approved',
+  SOLD:           'badge-draft',
+  CANCELLED:      'badge-rejected',
 };
 
 interface StatusBadgeProps {
@@ -23,11 +26,9 @@ interface StatusBadgeProps {
 }
 
 export default function StatusBadge({ status, className = '' }: StatusBadgeProps) {
-  const style = STATUS_STYLES[status] || 'bg-gray-100 text-gray-600';
+  const cls = STATUS_CLASSES[status] ?? 'badge-draft';
   return (
-    <span
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${style} ${className}`}
-    >
+    <span className={`status-badge ${cls} ${className}`}>
       {status.replace(/_/g, ' ')}
     </span>
   );
