@@ -28,9 +28,7 @@
           { "id": "project-timeline", "label": "Timeline" }
         ]
       },
-      "dashboardWidgets": [
-        { "component": "ProjectStatsWidget", "order": 1 }
-      ]
+      "dashboardWidgets": []
     },
     "PROJECT_DEVELOPER": {
       "routes": [
@@ -76,6 +74,28 @@
       "sections": {
         "ProjectDetailPage": [
           { "id": "project-info", "label": "Project Information" },
+          { "id": "verifier-review-action", "label": "Verifier Review" },
+          { "id": "project-timeline", "label": "Timeline" }
+        ]
+      },
+      "dashboardWidgets": []
+    },
+    "CERTIFIER": {
+      "routes": [
+        { "path": "/projects", "method": "GET" },
+        { "path": "/projects/:id", "method": "GET" }
+      ],
+      "nav": [
+        { "label": "All Projects", "path": "/projects", "icon": "Layers" }
+      ],
+      "pages": [
+        { "path": "/projects", "component": "ProjectListPage", "title": "Projects" },
+        { "path": "/projects/:id", "component": "ProjectDetailPage", "title": "Project Detail" }
+      ],
+      "sections": {
+        "ProjectDetailPage": [
+          { "id": "project-info", "label": "Project Information" },
+          { "id": "certifier-action", "label": "Certification" },
           { "id": "project-timeline", "label": "Timeline" }
         ]
       },

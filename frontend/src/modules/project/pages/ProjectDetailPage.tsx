@@ -2,7 +2,10 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../../core/api/axios';
 import { useAuth } from '../../../core/auth/AuthContext';
+import { getSectionsFor } from '../../../core/plugin-loader';
 import PageLoader from '../../../components/PageLoader';
+import VerifierReviewAction from '../components/VerifierReviewAction';
+import CertifierAction from '../components/CertifierAction';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -21,6 +24,8 @@ interface Project {
   vintageStartYear: number | null;
   vintageEndYear: number | null;
   developerId: string;
+  assignedVerifierId: string | null;
+  assignedCertifierId: string | null;
   documents: ProjectDocument[];
   createdAt: string;
 }
@@ -48,6 +53,7 @@ const STATUS_COLORS: Record<string, string> = {
   DRAFT: 'bg-stone-100 text-stone-600',
   SUBMITTED: 'bg-blue-100 text-blue-700',
   UNDER_REVIEW: 'bg-amber-100 text-amber-700',
+  INFO_REQUESTED: 'bg-orange-100 text-orange-700',
   APPROVED: 'bg-emerald-100 text-emerald-700',
   REJECTED: 'bg-red-100 text-red-600',
   VERIFIED: 'bg-teal-100 text-teal-700',
@@ -55,8 +61,8 @@ const STATUS_COLORS: Record<string, string> = {
   ACTIVE: 'bg-green-100 text-green-700',
 };
 
-const LIFECYCLE = ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'VERIFIED', 'CERTIFIED'];
-const LIFECYCLE_LABELS = ['Draft', 'Submitted', 'Under Review', 'Approved', 'Verified', 'Certified'];
+const LIFECYCLE = ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'INFO_REQUESTED', 'APPROVED', 'VERIFIED', 'CERTIFIED'];
+const LIFECYCLE_LABELS = ['Draft', 'Submitted', 'Under Review', 'Info Req.', 'Approved', 'Verified', 'Certified'];
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
 
@@ -115,14 +121,13 @@ function StatusTimeline({
           const histEntry = history.find((h) => h.toStatus === status);
           const isDone = i < currentIdx || project.status === status;
           const isCurrent = project.status === status;
-          const isRejected = project.status === 'REJECTED' && i === currentIdx;
 
           return (
             <React.Fragment key={status}>
-              <div className="flex flex-col items-center w-28">
+              <div className="flex flex-col items-center w-24">
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 ${
-                    isRejected
+                    project.status === 'REJECTED' && isCurrent
                       ? 'bg-red-500 border-red-500 text-white'
                       : isCurrent
                       ? 'bg-white border-green-500 text-green-600'
@@ -222,6 +227,148 @@ function HistoryTimeline({ history }: { history: HistoryEntry[] }) {
   );
 }
 
+// ─── Section components ───────────────────────────────────────────────────────
+
+function SubmitAction({
+  project,
+  onUpdate,
+}: {
+  project: Project;
+  onUpdate: () => void;
+}) {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [submitting, setSubmitting] = useState(false);
+  const canSubmit = project.status === 'DRAFT';
+  const isAwaitingReview = ['SUBMITTED', 'UNDER_REVIEW'].includes(project.status);
+  const isInfoRequested = project.status === 'INFO_REQUESTED';
+
+  async function handleSubmit() {
+    if (!id) return;
+    setSubmitting(true);
+    try {
+      await api.patch(`/projects/${id}/submit`);
+      onUpdate();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Submission failed');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <section className="rounded-2xl border border-stone-200 bg-white p-5">
+      <h2 className="text-sm font-semibold text-slate-900 mb-4">Actions</h2>
+      {canSubmit && (
+        <div className="flex gap-3">
+          <button
+            onClick={() => navigate(`/projects/${project.id}/edit`)}
+            className="btn-secondary"
+          >
+            Edit Draft
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={submitting}
+            className="btn-primary"
+          >
+            {submitting ? 'Submitting…' : 'Submit for Verification →'}
+          </button>
+        </div>
+      )}
+      {isAwaitingReview && (
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold bg-amber-100 text-amber-700">
+            Awaiting Reviewer Assignment
+          </span>
+          <p className="text-xs text-stone-400">Your project is in the review queue.</p>
+        </div>
+      )}
+      {isInfoRequested && (
+        <div className="space-y-3">
+          <span className="inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold bg-orange-100 text-orange-700">
+            Information Requested
+          </span>
+          <p className="text-xs text-stone-400 block">
+            The reviewer has requested additional information. Update your project and re-submit.
+          </p>
+          <button
+            onClick={() => navigate(`/projects/${project.id}/edit`)}
+            className="btn-secondary"
+          >
+            Edit & Re-submit
+          </button>
+        </div>
+      )}
+      {!canSubmit && !isAwaitingReview && !isInfoRequested && (
+        <p className="text-sm text-stone-400">No actions available at this stage.</p>
+      )}
+    </section>
+  );
+}
+
+function ApprovalAction({
+  project,
+  onUpdate,
+}: {
+  project: Project;
+  onUpdate: () => void;
+}) {
+  const [note, setNote] = useState('');
+  const [submitting, setSubmitting] = useState<'approve' | 'reject' | null>(null);
+
+  async function handle(action: 'approve' | 'reject') {
+    setSubmitting(action);
+    try {
+      await api.patch(`/projects/${project.id}/${action}`, { note: note || undefined });
+      setNote('');
+      onUpdate();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Action failed');
+    } finally {
+      setSubmitting(null);
+    }
+  }
+
+  if (!['SUBMITTED', 'UNDER_REVIEW'].includes(project.status)) {
+    return (
+      <section className="rounded-2xl border border-stone-200 bg-white p-5">
+        <h2 className="text-sm font-semibold text-slate-900 mb-3">Approval Decision</h2>
+        <p className="text-sm text-stone-400">No pending decision required.</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="rounded-2xl border border-stone-200 bg-white p-5">
+      <h2 className="text-sm font-semibold text-slate-900 mb-4">Approval Decision</h2>
+      <textarea
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        placeholder="Optional note…"
+        rows={2}
+        className="field w-full text-sm mb-4"
+      />
+      <div className="flex gap-3">
+        <button
+          disabled={submitting !== null}
+          onClick={() => handle('approve')}
+          className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+        >
+          {submitting === 'approve' ? 'Approving…' : 'Approve'}
+        </button>
+        <button
+          disabled={submitting !== null}
+          onClick={() => handle('reject')}
+          className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+        >
+          {submitting === 'reject' ? 'Rejecting…' : 'Reject'}
+        </button>
+      </div>
+    </section>
+  );
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function ProjectDetailPage() {
@@ -232,7 +379,6 @@ export default function ProjectDetailPage() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
 
   const load = useCallback(() => {
     if (!id) return;
@@ -250,19 +396,6 @@ export default function ProjectDetailPage() {
     load();
   }, [load]);
 
-  async function handleSubmit() {
-    if (!id) return;
-    setSubmitting(true);
-    try {
-      await api.patch(`/projects/${id}/submit`);
-      load();
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Submission failed');
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
   if (loading) return <PageLoader />;
 
   if (error || !project) {
@@ -279,9 +412,7 @@ export default function ProjectDetailPage() {
     );
   }
 
-  const isDeveloper = user?.role === 'PROJECT_DEVELOPER';
-  const canSubmit = isDeveloper && project.status === 'DRAFT';
-  const isAwaitingReview = ['SUBMITTED', 'UNDER_REVIEW'].includes(project.status);
+  const sections = user ? getSectionsFor('ProjectDetailPage', user.role as any) : [];
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
@@ -294,7 +425,6 @@ export default function ProjectDetailPage() {
           ← Back to Projects
         </button>
 
-        {/* Forest gradient banner */}
         <div className="mt-3 rounded-2xl overflow-hidden border border-stone-200 bg-gradient-to-r from-green-700 to-emerald-900 p-6 text-white">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -308,68 +438,47 @@ export default function ProjectDetailPage() {
         </div>
       </div>
 
-      {/* Info grid */}
-      <section>
-        <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-3">
-          Project Details
-        </h2>
-        <InfoGrid project={project} />
-      </section>
-
-      {/* Status timeline */}
-      <section className="rounded-2xl border border-stone-200 bg-white p-5">
-        <h2 className="text-sm font-semibold text-slate-900 mb-5">Status Timeline</h2>
-        <StatusTimeline project={project} history={history} />
-      </section>
-
-      {/* Documents */}
-      <section className="rounded-2xl border border-stone-200 bg-white p-5">
-        <h2 className="text-sm font-semibold text-slate-900 mb-4">Documents</h2>
-        <DocumentsList documents={project.documents ?? []} />
-      </section>
-
-      {/* History log */}
-      <section className="rounded-2xl border border-stone-200 bg-white p-5">
-        <h2 className="text-sm font-semibold text-slate-900 mb-4">Activity History</h2>
-        <HistoryTimeline history={history} />
-      </section>
-
-      {/* Actions */}
-      {isDeveloper && (
-        <section className="rounded-2xl border border-stone-200 bg-white p-5">
-          <h2 className="text-sm font-semibold text-slate-900 mb-4">Actions</h2>
-          {canSubmit && (
-            <div className="flex gap-3">
-              <button
-                onClick={() => navigate(`/projects/${id}/edit`)}
-                className="btn-secondary"
-              >
-                Edit Draft
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={submitting}
-                className="btn-primary"
-              >
-                {submitting ? 'Submitting…' : 'Submit for Verification →'}
-              </button>
-            </div>
-          )}
-          {isAwaitingReview && (
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold bg-amber-100 text-amber-700">
-                Awaiting Reviewer Assignment
-              </span>
-              <p className="text-xs text-stone-400">
-                Your project is in the review queue.
-              </p>
-            </div>
-          )}
-          {!canSubmit && !isAwaitingReview && (
-            <p className="text-sm text-stone-400">No actions available at this stage.</p>
-          )}
-        </section>
-      )}
+      {/* Manifest-driven sections */}
+      {sections.map((section) => {
+        switch (section.id) {
+          case 'project-info':
+            return (
+              <section key={section.id}>
+                <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-3">
+                  Project Details
+                </h2>
+                <InfoGrid project={project} />
+                {project.documents && project.documents.length > 0 && (
+                  <div className="mt-4 rounded-2xl border border-stone-200 bg-white p-5">
+                    <h2 className="text-sm font-semibold text-slate-900 mb-4">Documents</h2>
+                    <DocumentsList documents={project.documents} />
+                  </div>
+                )}
+              </section>
+            );
+          case 'submit-action':
+            return <SubmitAction key={section.id} project={project} onUpdate={load} />;
+          case 'approval-action':
+            return <ApprovalAction key={section.id} project={project} onUpdate={load} />;
+          case 'verifier-review-action':
+            return <VerifierReviewAction key={section.id} project={project} onUpdate={load} />;
+          case 'certifier-action':
+            return <CertifierAction key={section.id} project={project} onUpdate={load} />;
+          case 'project-timeline':
+            return (
+              <section key={section.id} className="rounded-2xl border border-stone-200 bg-white p-5">
+                <h2 className="text-sm font-semibold text-slate-900 mb-5">Status Timeline</h2>
+                <StatusTimeline project={project} history={history} />
+                <div className="mt-6">
+                  <h2 className="text-sm font-semibold text-slate-900 mb-4">Activity History</h2>
+                  <HistoryTimeline history={history} />
+                </div>
+              </section>
+            );
+          default:
+            return null;
+        }
+      })}
     </div>
   );
 }

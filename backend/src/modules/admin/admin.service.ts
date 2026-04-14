@@ -8,10 +8,7 @@ import { Between, FindOptionsWhere, Repository } from 'typeorm';
 import { EVENTS } from '../../core/events/carbon.events';
 import { AuditLog } from '../../database/entities/audit-log.entity';
 import { CreditBatch } from '../../database/entities/credit-batch.entity';
-import {
-  Project,
-  ProjectStatus,
-} from '../../database/entities/project.entity';
+import { Project } from '../../database/entities/project.entity';
 import { ProjectStatusHistory } from '../../database/entities/project-status-history.entity';
 import {
   User,
@@ -84,11 +81,6 @@ export class AdminService {
     user.status = UserStatus.ACTIVE;
     const saved = await this.usersRepo.save(user);
     this.eventEmitter.emit(EVENTS.USER_APPROVED, { userId, approvedByUserId: adminId });
-    this.eventEmitter.emit(EVENTS.USER_SUSPENDED, {
-      userId,
-      changedByUserId: adminId,
-      newStatus: UserStatus.ACTIVE,
-    });
     return saved;
   }
 
@@ -130,7 +122,7 @@ export class AdminService {
 
   async changeUserRole(
     userId: string,
-    adminId: string,
+    _adminId: string,
     dto: ChangeUserRoleDto,
   ): Promise<User> {
     const user = await this.findUser(userId);
