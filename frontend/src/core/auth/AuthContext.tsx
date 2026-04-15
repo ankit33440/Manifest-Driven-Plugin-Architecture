@@ -9,10 +9,19 @@ interface AuthUser {
   name: string;
 }
 
+interface RegisterPayload {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  role: string;
+}
+
 interface AuthContextValue {
   user: AuthUser | null;
   token: string | null;
   login: (email: string, password: string) => Promise<void>;
+  register: (data: RegisterPayload) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
 }
@@ -61,6 +70,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(newUser);
   }, []);
 
+  const register = useCallback(async (data: RegisterPayload) => {
+    await api.post('/auth/register', data);
+  }, []);
+
   const logout = useCallback(() => {
     localStorage.removeItem('nr_token');
     setToken(null);
@@ -68,7 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, token, login, register, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

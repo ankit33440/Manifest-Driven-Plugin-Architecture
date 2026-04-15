@@ -29,7 +29,12 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    if (error.response?.status === 401) {
+    const requestUrl = error.config?.url as string | undefined;
+    const token = localStorage.getItem('nr_token');
+    const isPublicAuthRequest =
+      requestUrl === '/auth/login' || requestUrl === '/auth/register';
+
+    if (error.response?.status === 401 && token && !isPublicAuthRequest) {
       localStorage.removeItem('nr_token');
       window.location.href = '/login';
     }

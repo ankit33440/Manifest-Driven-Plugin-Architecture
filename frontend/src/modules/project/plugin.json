@@ -37,6 +37,7 @@
         { "path": "/projects", "method": "POST" },
         { "path": "/projects/:id", "method": "PATCH" },
         { "path": "/projects/:id/submit", "method": "PATCH" },
+        { "path": "/projects/draft/:id", "method": "DELETE" },
         { "path": "/projects/:id/documents", "method": "POST" }
       ],
       "nav": [

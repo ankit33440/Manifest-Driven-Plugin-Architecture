@@ -153,6 +153,21 @@ export class ProjectService {
     return { deleted: true };
   }
 
+  async removeDraft(id: string, userId: string): Promise<{ deleted: boolean }> {
+    const project = await this.findOne(id);
+
+    if (project.developerId !== userId) {
+      throw new ForbiddenException('You can only delete your own drafts');
+    }
+
+    if (project.status !== ProjectStatus.DRAFT) {
+      throw new ForbiddenException('Only DRAFT projects can be discarded');
+    }
+
+    await this.projectsRepo.remove(project);
+    return { deleted: true };
+  }
+
   private async changeStatus(
     project: Project,
     toStatus: ProjectStatus,

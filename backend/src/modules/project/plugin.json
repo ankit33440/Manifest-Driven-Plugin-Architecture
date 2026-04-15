@@ -37,7 +37,8 @@
         { "path": "/projects", "method": "GET" },
         { "path": "/projects/:id", "method": "GET" },
         { "path": "/projects", "method": "POST" },
-        { "path": "/projects/:id/submit", "method": "PATCH" }
+        { "path": "/projects/:id/submit", "method": "PATCH" },
+        { "path": "/projects/draft/:id", "method": "DELETE" }
       ],
       "nav": [
         { "label": "My Projects", "path": "/projects", "icon": "FolderOpen" }

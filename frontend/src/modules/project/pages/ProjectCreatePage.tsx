@@ -4,6 +4,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Plus, Trash2, ArrowLeft, CheckCircle2, Circle, MapPin } from 'lucide-react';
+import ConfirmModal from '../../../components/common/ConfirmModal';
 import api from '../../../core/api/axios';
 import PageLoader from '../../../components/PageLoader';
 
@@ -72,6 +73,25 @@ function FieldError({ message }: { message?: string }) {
   return <p className="text-xs text-alert mt-1">{message}</p>;
 }
 
+function mapBackendMessageToField(message: string): keyof FormValues | null {
+  const normalized = message.toLowerCase();
+
+  if (normalized.includes('projectproponent') || normalized.includes('project proponent')) return 'projectProponent';
+  if (normalized.includes('startdate') || normalized.includes('start date')) return 'startDate';
+  if (normalized.includes('geocodedaddress') || normalized.includes('location')) return 'geocodedAddress';
+  if (normalized.includes('protocolversion') || normalized.includes('protocol version')) return 'protocolVersion';
+  if (normalized.includes('protocol')) return 'protocol';
+  if (normalized.includes('applicationyear') || normalized.includes('application year')) return 'applicationYear';
+  if (normalized.includes('vintage')) return 'vintage';
+  if (normalized.includes('proposedcarboncredits') || normalized.includes('proposed carbon credits')) return 'proposedCarbonCredits';
+  if (normalized.includes('averageaccrualrate') || normalized.includes('average accrual rate')) return 'averageAccrualRate';
+  if (normalized.includes('description')) return 'description';
+  if (normalized.includes('enrollment')) return 'enrollment';
+  if (normalized.includes('name')) return 'name';
+
+  return null;
+}
+
 function FieldWrapper({
   label,
   required,
@@ -127,10 +147,14 @@ export default function ProjectCreatePage() {
 
   const [initialLoading, setInitialLoading] = useState(isEditMode);
   const [projectId, setProjectId] = useState<string | null>(editId ?? null);
+  const [projectStatus, setProjectStatus] = useState<string | null>(editId ? null : 'DRAFT');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [apiError, setApiError] = useState('');
+  const [backendFieldErrors, setBackendFieldErrors] = useState<Partial<Record<keyof FormValues, string>>>({});
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [discardModalOpen, setDiscardModalOpen] = useState(false);
+  const [discarding, setDiscarding] = useState(false);
 
   const {
     register,
@@ -139,6 +163,7 @@ export default function ProjectCreatePage() {
     getValues,
     watch,
     reset,
+    setFocus,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema) as any,
@@ -146,6 +171,16 @@ export default function ProjectCreatePage() {
   });
 
   const { fields, append, remove } = useFieldArray({ control, name: 'documents' });
+
+  useEffect(() => {
+    const subscription = watch(() => {
+      if (Object.keys(backendFieldErrors).length > 0) {
+        setBackendFieldErrors({});
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [watch, backendFieldErrors]);
 
   // ── Load existing project in edit mode ─────────────────────────────────────
 
@@ -155,6 +190,7 @@ export default function ProjectCreatePage() {
       .get(`/projects/${editId}`)
       .then((r) => {
         const p = r.data;
+        setProjectStatus(p.status ?? 'DRAFT');
         reset({
           name:               p.name ?? '',
           projectProponent:   p.projectProponent ?? '',
@@ -185,6 +221,40 @@ export default function ProjectCreatePage() {
     return v && v.trim() !== '' ? Number(v) : undefined;
   }
 
+  function applyBackendError(rawMessage: unknown, fallbackMessage: string) {
+    const message = Array.isArray(rawMessage)
+      ? rawMessage.join(', ')
+      : typeof rawMessage === 'string'
+        ? rawMessage
+        : fallbackMessage;
+
+    const field = mapBackendMessageToField(message);
+    if (field) {
+      setBackendFieldErrors({ [field]: message });
+      setApiError('');
+      setFocus(field);
+      return;
+    }
+
+    setBackendFieldErrors({});
+    setApiError(message);
+  }
+
+  function resetFormState() {
+    reset(EMPTY);
+    setProjectId(null);
+    setProjectStatus('DRAFT');
+    setIsSubmitted(false);
+    setApiError('');
+    setBackendFieldErrors({});
+  }
+
+  const hasSavedDraft = Boolean(projectId) && projectStatus === 'DRAFT' && !isSubmitted;
+  const discardDisabled = submitting || saving || discarding || isSubmitted;
+  const discardMessage = hasSavedDraft
+    ? 'This will delete your saved draft and reset the form.'
+    : 'All unsaved changes will be lost.';
+
   async function persistProject(values: FormValues, pid: string | null): Promise<string> {
     const body = {
       name:               values.name,
@@ -208,6 +278,7 @@ export default function ProjectCreatePage() {
       const res = await api.post('/projects', body);
       id = res.data.id;
       setProjectId(id);
+      setProjectStatus(res.data.status ?? 'DRAFT');
     }
 
     const newDocs = values.documents.filter((d) => !d.id && d.name && d.url);
@@ -220,13 +291,13 @@ export default function ProjectCreatePage() {
 
   async function handleSaveDraft() {
     setApiError('');
+    setBackendFieldErrors({});
     setSaving(true);
     try {
       await persistProject(getValues(), projectId);
       navigate('/projects');
     } catch (err: any) {
-      const msg = err.response?.data?.message;
-      setApiError(Array.isArray(msg) ? msg.join(', ') : msg || 'Failed to save draft');
+      applyBackendError(err.response?.data?.message, 'Failed to save draft');
     } finally {
       setSaving(false);
     }
@@ -234,18 +305,52 @@ export default function ProjectCreatePage() {
 
   const onSubmit = async (values: FormValues) => {
     setApiError('');
+    setBackendFieldErrors({});
     setSubmitting(true);
     try {
       const id = await persistProject(values, projectId);
       await api.patch(`/projects/${id}/submit`);
+      setProjectStatus('SUBMITTED');
       setIsSubmitted(true);
     } catch (err: any) {
-      const msg = err.response?.data?.message;
-      setApiError(Array.isArray(msg) ? msg.join(', ') : msg || 'Submission failed');
+      applyBackendError(err.response?.data?.message, 'Submission failed');
     } finally {
       setSubmitting(false);
     }
   };
+
+  function handleDiscardClick() {
+    if (discardDisabled) return;
+    setDiscardModalOpen(true);
+  }
+
+  function handleDiscardCancel() {
+    if (discarding) return;
+    setDiscardModalOpen(false);
+  }
+
+  async function handleDiscardConfirm() {
+    if (discarding) return;
+
+    setDiscarding(true);
+    setApiError('');
+
+    try {
+      if (hasSavedDraft && projectId) {
+        await api.delete(`/projects/draft/${projectId}`);
+      }
+
+      resetFormState();
+      setDiscardModalOpen(false);
+      navigate('/projects');
+    } catch (err: any) {
+      const msg = err.response?.data?.message;
+      setDiscardModalOpen(false);
+      setApiError(Array.isArray(msg) ? msg.join(', ') : msg || 'Failed to discard submission');
+    } finally {
+      setDiscarding(false);
+    }
+  }
 
   // ── Readiness ──────────────────────────────────────────────────────────────
 
@@ -261,12 +366,28 @@ export default function ProjectCreatePage() {
     return <div className="page-container"><SuccessScreen projectId={projectId} /></div>;
   }
 
-  const err = (field: keyof typeof errors) => errors[field]?.message as string | undefined;
+  const err = (field: keyof FormValues) =>
+    (errors[field]?.message as string | undefined) ?? backendFieldErrors[field];
   const cls = (field: keyof typeof errors) =>
-    `field mt-1 ${errors[field] ? 'border-alert focus:ring-alert/20' : ''}`;
+    `field mt-1 ${
+      errors[field] || backendFieldErrors[field as keyof FormValues]
+        ? 'border-alert bg-alert/5 focus:border-alert focus:ring-alert/20'
+        : ''
+    }`;
 
   return (
     <div className="page-container">
+      <ConfirmModal
+        open={discardModalOpen}
+        title="Discard changes?"
+        message={discardMessage}
+        onCancel={handleDiscardCancel}
+        onConfirm={handleDiscardConfirm}
+        confirmLabel="Confirm Discard"
+        cancelLabel="Cancel"
+        loading={discarding}
+      />
+
       {/* Page header */}
       <div className="mb-6">
         <button
@@ -296,20 +417,26 @@ export default function ProjectCreatePage() {
                   <FieldError message={err('name')} />
                 </FieldWrapper>
                 <FieldWrapper label="Project Proponent">
-                  <input {...register('projectProponent')} className="field mt-1" placeholder="Institutional Developer Name" />
+                  <input {...register('projectProponent')} className={cls('projectProponent')} placeholder="Institutional Developer Name" />
+                  <FieldError message={err('projectProponent')} />
                 </FieldWrapper>
               </div>
 
               {/* Row: start date + location */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FieldWrapper label="Project Start Date">
-                  <input {...register('startDate')} type="date" className="field mt-1" />
+                  <input {...register('startDate')} type="date" className={cls('startDate')} />
+                  <FieldError message={err('startDate')} />
                 </FieldWrapper>
                 <FieldWrapper label="Location" required>
                   <div className="relative mt-1">
                     <input
                       {...register('geocodedAddress')}
-                      className={`field pr-8 ${errors.geocodedAddress ? 'border-alert focus:ring-alert/20' : ''}`}
+                      className={`field pr-8 ${
+                        errors.geocodedAddress || backendFieldErrors.geocodedAddress
+                          ? 'border-alert bg-alert/5 focus:border-alert focus:ring-alert/20'
+                          : ''
+                      }`}
                       placeholder="Brazil, Amazonas"
                     />
                     <MapPin size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-faint pointer-events-none" />
@@ -320,16 +447,19 @@ export default function ProjectCreatePage() {
 
               {/* Row: enrollment */}
               <FieldWrapper label="Enrollment">
-                <input {...register('enrollment')} className="field mt-1" placeholder="Standard Registry" />
+                <input {...register('enrollment')} className={cls('enrollment')} placeholder="Standard Registry" />
+                <FieldError message={err('enrollment')} />
               </FieldWrapper>
 
               {/* Row: protocol + version */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FieldWrapper label="Protocol">
-                  <input {...register('protocol')} className="field mt-1" placeholder="VM0047" />
+                  <input {...register('protocol')} className={cls('protocol')} placeholder="VM0047" />
+                  <FieldError message={err('protocol')} />
                 </FieldWrapper>
                 <FieldWrapper label="Protocol Version">
-                  <input {...register('protocolVersion')} className="field mt-1" placeholder="V1.2" />
+                  <input {...register('protocolVersion')} className={cls('protocolVersion')} placeholder="V1.2" />
+                  <FieldError message={err('protocolVersion')} />
                 </FieldWrapper>
               </div>
 
@@ -361,7 +491,11 @@ export default function ProjectCreatePage() {
               <FieldWrapper label="Project Description" required>
                 <textarea
                   {...register('description')}
-                  className={`field mt-1 resize-none ${errors.description ? 'border-alert focus:ring-alert/20' : ''}`}
+                  className={`field mt-1 resize-none ${
+                    errors.description || backendFieldErrors.description
+                      ? 'border-alert bg-alert/5 focus:border-alert focus:ring-alert/20'
+                      : ''
+                  }`}
                   rows={5}
                   placeholder="Comprehensive restoration project covering degraded pasture land in the Amazon Basin…"
                 />
@@ -458,18 +592,19 @@ export default function ProjectCreatePage() {
 
               {/* Actions */}
               <div className="space-y-2 pt-1">
-                <button type="submit" disabled={submitting || saving} className="btn-primary w-full">
+                <button type="submit" disabled={submitting || saving || discarding} className="btn-primary w-full">
                   {submitting ? 'Submitting…' : 'Submit for Verification'}
                 </button>
-                <button type="button" onClick={handleSaveDraft} disabled={saving || submitting} className="btn-secondary w-full">
+                <button type="button" onClick={handleSaveDraft} disabled={saving || submitting || discarding} className="btn-secondary w-full">
                   {saving ? 'Saving…' : 'Save Draft & Exit'}
                 </button>
                 <button
                   type="button"
-                  onClick={() => navigate(editId ? `/projects/${editId}` : '/projects')}
-                  className="w-full text-sm font-medium text-alert hover:underline transition-colors py-1"
+                  onClick={handleDiscardClick}
+                  disabled={discardDisabled}
+                  className="w-full py-1 text-sm font-medium text-alert transition-colors hover:underline disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Discard Submission
+                  {discarding ? 'Discarding...' : 'Discard Submission'}
                 </button>
               </div>
             </div>

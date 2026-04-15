@@ -83,6 +83,12 @@ export class ProjectController {
     return this.projectService.getHistory(id);
   }
 
+  @Delete('draft/:id')
+  removeDraft(@Param('id') id: string, @Req() req: Request) {
+    const user = (req as any).user;
+    return this.projectService.removeDraft(id, user?.id);
+  }
+
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.projectService.remove(id);
